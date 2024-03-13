@@ -4,7 +4,7 @@ from typing import List
 
 
 class Query(BaseModel):
-    text: str
+    question: str
 
 
 class BaseOpenAIConfig(BaseModel):
