@@ -18,7 +18,11 @@ langchain-community = "^0.0.26"
 langchain-openai = "^0.0.8"
 openpyxl = "^3.1.2"
 pandera = "^0.18.0"
+tiktoken = "^0.6.0"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.3"
 
 [build-system]
 requires = ["poetry-core"]

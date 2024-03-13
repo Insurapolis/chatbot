@@ -1,65 +1,20 @@
 # https://gist.github.com/jvelezmagic/03ddf4c452d011aae36b2a0f73d72f68
 
+from typing import Any
+import random
+import tiktoken
+from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai import AzureChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
 
-
-from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
-
-
 from rag.config import AzureChatOpenAIConfig
-from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE
-
-
-# def get_llm():
-
-#     config = AzureChatOpenAIConfig.load_from_yaml(
-#         file_path="./openai_config.yml"
-#     ).model_dump()
-#     llm = AzureChatOpenAI(**config)
-
-#     return llm
-
-
-# def get_prompt():
-
-#     prompt = ChatPromptTemplate(
-#         messages=[
-#             SystemMessagePromptTemplate.from_template(SYSTEM_MESSAGE),
-#             HumanMessagePromptTemplate.from_template(HUMAN_MESSAGE),
-#         ]
-#     )
-
-#     return prompt
-
-
-# def get_llm_rag_chain(retriever):
-
-#     llm = get_llm()
-
-#     prompt = get_prompt()
-
-#     # Conversation Memory
-#     memory = ConversationBufferWindowMemory(
-#         memory_key="chat_history", return_messages=True, k=2
-#     )
-
-#     # Create a chain that uses the Chroma vector store
-#     chain = ConversationalRetrievalChain.from_llm(
-#         llm=llm,
-#         chain_type="stuff",
-#         retriever=retriever,
-#         memory=memory,
-#         verbose=True,
-#         combine_docs_chain_kwargs={"prompt": prompt},
-#     )
-
-#     return chain
+from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
 
 
 class LangChainChatbot:
@@ -146,3 +101,39 @@ class LangChainChatbot:
         """
         chatbot_instance = cls(config_path)
         return chatbot_instance.get_llm_rag_chain(retriever)
+
+
+class DebugConversation:
+    def __init__(self, model):
+
+        self.memory = ChatMessageHistory()
+        self.encoding = tiktoken.encoding_for_model(model)
+        self.total_tokens = 0
+        self.list_answer = [ANSWER_1, ANSWER_2, ANSWER_3]
+
+    def count_tokens(self, text):
+        num_tokens = len(self.encoding.encode(text))
+        return num_tokens
+
+    def response(self):
+        if self.list_answer:
+            # Randomly choose an answer
+            selected_answer = random.choice(self.list_answer)
+            # Remove the chosen answer from the list
+            self.list_answer.remove(selected_answer)
+            return selected_answer
+        else:
+            return "No more answers available."
+
+    def __call__(self, text: str):
+        response = self.response()
+        self.memory.add_user_message(message=text)
+        self.memory.add_ai_message(message=response)
+        self.total_tokens += self.count_tokens(text=text)
+        self.total_tokens += self.count_tokens(text=response)
+
+        return {
+            "response": response,
+            "memory": self.memory.dict(),
+            "total_tokens": self.total_tokens,
+        }

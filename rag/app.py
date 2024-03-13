@@ -5,16 +5,13 @@
 # https://github.com/pinecone-io/examples/blob/master/learn/generation/langchain/handbook/09-langchain-streaming/09-langchain-streaming.ipynb
 
 import uvicorn
-from functools import lru_cache
-from typing import AsyncGenerator, Literal
-
+from langchain_community.callbacks import get_openai_callback
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-
 from fastapi import Depends, FastAPI, Body
 from fastapi.responses import StreamingResponse
 
 from rag.config import Query
-from rag.llm import LangChainChatbot
+from rag.llm import LangChainChatbot, DebugConversation
 from rag.retriever import VectorDBClient, VectorDBCreator
 from rag.constants import DB_PATH, COLLECTION_NAME, MODEL_NAME
 
@@ -32,6 +29,7 @@ chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
     config_path="./openai_config.yml", retriever=retriever
 )
 
+# chain_debug = DebugConversation(model="gpt-3.5-turbo")
 
 
 @app.get("/check")
@@ -44,9 +42,28 @@ async def check():
 async def chat(
     query: Query = Body(...),
 ):
-    res = chain_rag(query.text)
-    print(chain_rag.memory)
-    return {"response": res}
+    with get_openai_callback() as cb:
+        res = chain_rag(query.text)
+        print(chain_rag.memory)
+
+    return {
+        "response": res,
+        "total_tokens": cb.total_tokens,
+        "total_cost": cb.total_cost,
+    }
+
+
+# @app.post("/chat")
+# async def chat(
+#     query: Query = Body(...),
+# ):
+#     response = chain_debug(query.text)
+
+#     return {
+#         "response": response['response'],
+#         "total_tokens": response['total_tokens'],
+#         "mnemory": response['memory'],
+#     }
 
 
 if __name__ == "__main__":
