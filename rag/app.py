@@ -4,6 +4,12 @@
 # https://github.com/pinecone-io/examples/blob/master/learn/generation/langchain/handbook/09-langchain-streaming/main.py
 # https://github.com/pinecone-io/examples/blob/master/learn/generation/langchain/handbook/09-langchain-streaming/09-langchain-streaming.ipynb
 
+
+# https://github.com/langchain-ai/langchain/discussions/18087
+# https://python.langchain.com/docs/modules/memory/custom_memory
+# https://stackoverflow.com/questions/75965605/how-to-persist-langchain-conversation-memory-save-and-load
+
+
 import uvicorn
 from langchain_community.callbacks import get_openai_callback
 from langchain_community.embeddings import SentenceTransformerEmbeddings

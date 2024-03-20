@@ -3,6 +3,8 @@
 from typing import Any
 import random
 import tiktoken
+
+# from langchain_community.chat_message_histories import PostgresChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai import AzureChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
@@ -27,6 +29,9 @@ from rag.templates import (
     ANSWER_8,
     ANSWER_9,
 )
+from rag.memory import PostgresChatMessageHistory
+from rag.config import AzureChatOpenAIConfig, Postgres
+from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
 
 
 class LangChainChatbot:
@@ -84,9 +89,22 @@ class LangChainChatbot:
         if not self.prompt:
             self._get_prompt()
 
+        url = Postgres.POSTGRES_URL
+
+
+        message_history = PostgresChatMessageHistory(
+            user_id=44,
+            session_id="test44",
+            connection_string=url,
+            table_name="convchat",
+        )
+
         # Conversation Memory
         memory = ConversationBufferWindowMemory(
-            memory_key="chat_history", return_messages=True, k=2
+            chat_memory=message_history,
+            memory_key="chat_history",
+            return_messages=True,
+            k=2,
         )
 
         # Create a chain using the provided retriever
