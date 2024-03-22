@@ -89,30 +89,11 @@ class LangChainChatbot:
         if not self.prompt:
             self._get_prompt()
 
-        url = Postgres.POSTGRES_URL
-
-
-        message_history = PostgresChatMessageHistory(
-            user_id=44,
-            session_id="test44",
-            connection_string=url,
-            table_name="convchat",
-        )
-
-        # Conversation Memory
-        memory = ConversationBufferWindowMemory(
-            chat_memory=message_history,
-            memory_key="chat_history",
-            return_messages=True,
-            k=2,
-        )
-
         # Create a chain using the provided retriever
         chain = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
             chain_type="stuff",
             retriever=retriever,
-            memory=memory,
             verbose=True,
             combine_docs_chain_kwargs={"prompt": self.prompt},
         )

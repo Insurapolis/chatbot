@@ -1,7 +1,8 @@
 import json
 import logging
-from typing import List
+from typing import List, Sequence, Union
 
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import (
     BaseMessage,
@@ -45,6 +46,8 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
             session_id TEXT NOT NULL,
             user_id INTEGER NOT NULL,
             message JSONB NOT NULL,
+            tokens int NOT NULL,
+            cost float NOT NULL,
             send_at TIMESTAMP WITH TIME ZONE DEFAULT now()
         );"""
         self.cursor.execute(create_table_query)
@@ -58,21 +61,65 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
         )
         self.cursor.execute(query, (self.session_id,))
         items = [record["message"] for record in self.cursor.fetchall()]
-        print(items)
         messages = messages_from_dict(items)
         return messages
 
-    def add_message(self, message: BaseMessage) -> None:
+    def add_message(self, message: BaseMessage, tokens: int, cost: float) -> None:
         """Append the message to the record in PostgreSQL"""
         from psycopg import sql
 
         query = sql.SQL(
-            "INSERT INTO {} (session_id, message, user_id) VALUES (%s, %s, %s);"
+            "INSERT INTO {} (session_id, message, user_id, tokens, cost) VALUES (%s, %s, %s, %s, %s);"
         ).format(sql.Identifier(self.table_name))
         self.cursor.execute(
-            query, (self.session_id, json.dumps(message_to_dict(message)), self.user_id)
+            query,
+            (
+                self.session_id,
+                json.dumps(message_to_dict(message)),
+                self.user_id,
+                tokens,
+                cost,
+            ),
         )
         self.connection.commit()
+
+    def add_user_message(
+        self, message: Union[HumanMessage, str], tokens: int, cost: float
+    ) -> None:
+        """Convenience method for adding a human message string to the store.
+
+        Please note that this is a convenience method. Code should favor the
+        bulk add_messages interface instead to save on round-trips to the underlying
+        persistence layer.
+
+        This method may be deprecated in a future release.
+
+        Args:
+            message: The human message to add
+        """
+        if isinstance(message, HumanMessage):
+            self.add_message(message)
+        else:
+            self.add_message(HumanMessage(content=message), tokens=tokens, cost=cost)
+
+    def add_ai_message(
+        self, message: Union[AIMessage, str], tokens: int, cost: float
+    ) -> None:
+        """Convenience method for adding an AI message string to the store.
+
+        Please note that this is a convenience method. Code should favor the bulk
+        add_messages interface instead to save on round-trips to the underlying
+        persistence layer.
+
+        This method may be deprecated in a future release.
+
+        Args:
+            message: The AI message to add.
+        """
+        if isinstance(message, AIMessage):
+            self.add_message(message)
+        else:
+            self.add_message(AIMessage(content=message), tokens=tokens, cost=cost)
 
     def clear(self) -> None:
         """Clear session memory from PostgreSQL"""

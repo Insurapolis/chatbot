@@ -13,10 +13,12 @@
 import uvicorn
 from langchain_community.callbacks import get_openai_callback
 from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
 from fastapi import Depends, FastAPI, Body
 from fastapi.responses import StreamingResponse
 
-from rag.config import Query
+from rag.memory import PostgresChatMessageHistory
+from rag.config import Query, Postgres
 from rag.llm import LangChainChatbot, DebugConversation
 from rag.retriever import VectorDBClient, VectorDBCreator
 from rag.constants import DB_PATH, COLLECTION_NAME, DEBUG_MODE
