@@ -18,53 +18,32 @@ from rag.constants import DB_PATH, COLLECTION_NAME, DEBUG_MODE
 
 app = FastAPI()
 
-if DEBUG_MODE:
-    chain_debug = DebugConversation(model="gpt-3.5-turbo")
+# collection client
+chroma_collection_client = VectorDBClient.get_chroma_collection_client(
+    collection_name=COLLECTION_NAME, db_path=DB_PATH
+)
 
-    @app.post("/chat")
-    async def chat(
-        query: Query = Body(...),
-    ):
-        response = chain_debug(query.question)
+retriever = chroma_collection_client.as_retriever(search_kwargs={"k": 2})
 
-        return {
-            "response": response["response"],
-            "total_tokens": response["total_tokens"],
-            "mnemory": response["memory"],
-        }
-
-else:
-    # collection client
-    chroma_collection_client = VectorDBClient.get_chroma_collection_client(
-        collection_name=COLLECTION_NAME, db_path=DB_PATH
-    )
-
-    retriever = chroma_collection_client.as_retriever(search_kwargs={"k": 2})
-
-    chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
-        config_path="./openai_config.yml", retriever=retriever
-    )
-
-    @app.post("/chat")
-    async def chat(
-        query: Query = Body(...),
-    ):
-        with get_openai_callback() as cb:
-            res = chain_rag(query.question)
-            print(chain_rag.memory)
-
-        return {
-            "response": res,
-            "total_tokens": cb.total_tokens,
-            "total_cost": cb.total_cost,
-        }
+chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
+    config_path="./openai_config.yml", retriever=retriever
+)
 
 
-@app.get("/check")
-async def check():
-    """Check the api is running"""
-    return {"status": "success"}
+@app.post("/chat")
+async def chat(
+    query: Query = Body(...),
+):
+    with get_openai_callback() as cb:
+        res = chain_rag(query.question)
+        print(chain_rag.memory)
+
+    return {
+        "response": res,
+        "total_tokens": cb.total_tokens,
+        "total_cost": cb.total_cost,
+    }
 
 
 # if __name__ == "__main__":
-#     uvicorn.run("app:app", host="localhost", port=8000, reload=True)
+#     uvicorn.run("debug:app", host="localhost", port=8000, reload=True)

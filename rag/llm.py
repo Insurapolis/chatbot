@@ -14,7 +14,19 @@ from langchain.prompts import (
 )
 
 from rag.config import AzureChatOpenAIConfig
-from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
+from rag.templates import (
+    SYSTEM_MESSAGE,
+    HUMAN_MESSAGE,
+    ANSWER_1,
+    ANSWER_2,
+    ANSWER_3,
+    ANSWER_4,
+    ANSWER_5,
+    ANSWER_6,
+    ANSWER_7,
+    ANSWER_8,
+    ANSWER_9,
+)
 
 
 class LangChainChatbot:
@@ -109,11 +121,36 @@ class DebugConversation:
         self.memory = ChatMessageHistory()
         self.encoding = tiktoken.encoding_for_model(model)
         self.total_tokens = 0
-        self.list_answer = [ANSWER_1, ANSWER_2, ANSWER_3]
+        self.list_answer = [
+            ANSWER_1,
+            ANSWER_2,
+            ANSWER_3,
+            ANSWER_4,
+            ANSWER_5,
+            ANSWER_6,
+            ANSWER_7,
+            ANSWER_8,
+            ANSWER_9,
+        ]
 
     def count_tokens(self, text):
         num_tokens = len(self.encoding.encode(text))
         return num_tokens
+
+    def clear(self):
+        self.memory = ChatMessageHistory()
+        self.total_tokens = 0
+        self.list_answer = [
+            ANSWER_1,
+            ANSWER_2,
+            ANSWER_3,
+            ANSWER_4,
+            ANSWER_5,
+            ANSWER_6,
+            ANSWER_7,
+            ANSWER_8,
+            ANSWER_9,
+        ]
 
     def response(self):
         if self.list_answer:
