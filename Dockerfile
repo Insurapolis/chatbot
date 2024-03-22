@@ -11,4 +11,4 @@ RUN poetry install --no-root
 WORKDIR /code
 COPY ./rag /code/rag
 
-CMD ["poetry", "run", "uvicorn", "rag.app:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+CMD ["poetry", "run", "uvicorn", "rag.debug:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
