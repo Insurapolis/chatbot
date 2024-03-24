@@ -9,19 +9,28 @@
 # https://python.langchain.com/docs/modules/memory/custom_memory
 # https://stackoverflow.com/questions/75965605/how-to-persist-langchain-conversation-memory-save-and-load
 
-
+import os
 import uvicorn
+import uuid
 from langchain_community.callbacks import get_openai_callback
 from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
+from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, Body
 from fastapi.responses import StreamingResponse
 
+from rag.query import QueryConversations
 from rag.memory import PostgresChatMessageHistory
-from rag.config import Query, Postgres
+from rag.config import ChatQuestion, Postgres, UserId, NewUser
 from rag.llm import LangChainChatbot
-from rag.retriever import VectorDBClient, VectorDBCreator
+from rag.retriever import VectorDBClient
 from rag.constants import DB_PATH, COLLECTION_NAME, DEBUG_MODE
+from dotenv import load_dotenv
 
+load_dotenv()
+
+conn_string = Postgres.POSTGRES_URL
+
+query_db = QueryConversations(connection_string=conn_string)
 
 app = FastAPI()
 
@@ -36,33 +45,62 @@ chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
     config_path="./openai_config.yml", retriever=retriever
 )
 
-conn_string = Postgres.POSTGRES_URL
-
 
 @app.post("/chat")
 async def chat(
-    query: Query = Body(...),
+    question: ChatQuestion = Body(...),
 ):
     chat_memory = PostgresChatMessageHistory(
         user_id=444,
         session_id="test",
         connection_string=conn_string,
-        table_name="convchat",
+        table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
     )
 
     with get_openai_callback() as cb:
         res = chain_rag.invoke(
-            {"question": query.question, "chat_history": chat_memory.messages}
+            {"question": question.question, "chat_history": chat_memory.messages}
         )
 
-    chat_memory.add_user_message(messages=query.question)
-    chat_memory.add_ai_message(message=res.get("answer"))
-    return {
+    chat_memory.add_user_message(
+        messages=question.question, tokens=cb.prompt_tokens, cost=cb.total_cost
+    )
+    chat_memory.add_ai_message(
+        message=res.get("answer"), tokens=cb.completion_tokens, cost=cb.total_cost
+    )
+
+    response_data = {
         "response": res,
         "total_tokens": cb.total_tokens,
         "total_cost": cb.total_cost,
     }
 
+    return JSONResponse(content=response_data, status_code=200)
 
-# if __name__ == "__main__":
-#     uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
+
+@app.post("/new-conversation")
+async def new_conversation(user: UserId = Body(...)):
+    conv_uuid = str(uuid.uuid4())
+    query_db.create_new_consersation(conv_uuid=conv_uuid, user_id=user.user_id)
+    response = {"user_id": user.user_id, "conversation": conv_uuid}
+    return JSONResponse(content=response, status_code=200)
+
+
+@app.get("/list-conversations")
+async def list_conversation(user: UserId = Body(...)):
+    return
+
+
+@app.post("/new-user")
+async def create_user(user: NewUser = Body(...)):
+    query_db.create_new_user(
+        email=user.email, firstname=user.firstname, surname=user.surname
+    )
+    return JSONResponse(content="User created", status_code=200)
+
+
+# @app.get("/total-tokens")
+
+
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="localhost", port=8000, reload=True)

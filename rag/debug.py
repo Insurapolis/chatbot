@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI, Body
 from fastapi.responses import JSONResponse
 
-from rag.config import Query
+from rag.config import ChatQuestion
 from rag.llm import DummyConversation
 
 app = FastAPI()
@@ -12,7 +12,7 @@ chain_debug = DummyConversation(model="gpt-3.5-turbo")
 
 @app.post("/chat")
 async def chat(
-    query: Query = Body(...),
+    query: ChatQuestion = Body(...),
 ):
     response = chain_debug(query.question)
 

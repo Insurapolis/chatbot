@@ -8,10 +8,18 @@ from dataclasses import dataclass
 
 load_dotenv()
 
+class NewUser(BaseModel):
+    email : str
+    firstname : str
+    surname : str
 
-class Query(BaseModel):
+class UserId(BaseModel):
+    user_id : int
+
+class ChatQuestion(BaseModel):
     question: str
-
+    user_id : int
+    conversation_id : int
 
 class BaseOpenAIConfig(BaseModel):
     model_name: str = Field(...)

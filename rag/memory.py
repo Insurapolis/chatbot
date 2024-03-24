@@ -43,7 +43,7 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
     def _create_table_if_not_exists(self) -> None:
         create_table_query = f"""CREATE TABLE IF NOT EXISTS {self.table_name} (
             id SERIAL PRIMARY KEY,
-            session_id TEXT NOT NULL,
+            conversation_uuid TEXT NOT NULL,
             user_id INTEGER NOT NULL,
             message JSONB NOT NULL,
             tokens int NOT NULL,
