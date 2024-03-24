@@ -7,18 +7,19 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-langchain = "^0.1.11"
 openai = "^1.13.3"
 fastapi = "^0.110.0"
 chromadb = "^0.4.24"
 pandas = "^2.2.1"
 sentence-transformers = "^2.5.1"
 pydantic = "^2.6.3"
-langchain-community = "^0.0.26"
-langchain-openai = "^0.0.8"
 openpyxl = "^3.1.2"
 pandera = "^0.18.0"
 tiktoken = "^0.6.0"
+psycopg = "^3.1.18"
+langchain-community = "^0.0.28"
+langchain = "^0.1.12"
+langchain-openai = "^0.0.8"
 
 
 [tool.poetry.group.dev.dependencies]

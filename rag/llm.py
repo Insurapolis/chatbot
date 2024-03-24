@@ -3,6 +3,8 @@
 from typing import Any
 import random
 import tiktoken
+
+# from langchain_community.chat_message_histories import PostgresChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai import AzureChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
@@ -27,6 +29,8 @@ from rag.templates import (
     ANSWER_8,
     ANSWER_9,
 )
+from rag.config import AzureChatOpenAIConfig
+from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
 
 
 class LangChainChatbot:
@@ -84,17 +88,11 @@ class LangChainChatbot:
         if not self.prompt:
             self._get_prompt()
 
-        # Conversation Memory
-        memory = ConversationBufferWindowMemory(
-            memory_key="chat_history", return_messages=True, k=2
-        )
-
         # Create a chain using the provided retriever
         chain = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
             chain_type="stuff",
             retriever=retriever,
-            memory=memory,
             verbose=True,
             combine_docs_chain_kwargs={"prompt": self.prompt},
         )
@@ -115,7 +113,7 @@ class LangChainChatbot:
         return chatbot_instance.get_llm_rag_chain(retriever)
 
 
-class DebugConversation:
+class DummyConversation:
     def __init__(self, model):
 
         self.memory = ChatMessageHistory()

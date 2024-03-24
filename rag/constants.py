@@ -1,4 +1,4 @@
-DEBUG_MODE = True
+DEBUG_MODE = False
 DB_PATH = "./db"
 COLLECTION_NAME = "CollectionStreamlit"
 MODEL_NAME = "llmrails/ember-v1"

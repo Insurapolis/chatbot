@@ -1,6 +1,12 @@
 from pydantic import BaseModel, Field, model_serializer
 from rag.utils import load_conf
 from typing import List
+# from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
+from dataclasses import dataclass
+
+load_dotenv()
 
 
 class Query(BaseModel):
@@ -60,3 +66,17 @@ class VectorDatabaseFilter(BaseModel):
             "category": {"$in": self.category},
             "type": {"$in": self.type},
         }
+        
+
+@dataclass
+class Postgres:
+    POSTGRES_USER: str = os.getenv("POSTGRES_USER")
+    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD")
+    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
+    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", 5432))
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "maicolrodrigues")
+    POSTGRES_URL: str = (
+        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
+        if (POSTGRES_USER != None and POSTGRES_PASSWORD != None)
+        else f"postgresql://{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
