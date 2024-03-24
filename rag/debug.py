@@ -3,11 +3,12 @@ from fastapi import FastAPI, Body
 from fastapi.responses import JSONResponse
 
 from rag.config import Query
-from rag.llm import DebugConversation
+from rag.llm import DummyConversation
 
 app = FastAPI()
 
-chain_debug = DebugConversation(model="gpt-3.5-turbo")
+chain_debug = DummyConversation(model="gpt-3.5-turbo")
+
 
 @app.post("/chat")
 async def chat(
@@ -20,11 +21,12 @@ async def chat(
         "total_tokens": response["total_tokens"],
         "mnemory": response["memory"],
     }
-    
+
+
 @app.post("/clear")
 async def clear_conversation():
     chain_debug.clear()
-    return JSONResponse({"message" : "conversation deleted"})
+    return JSONResponse({"message": "conversation deleted"})
 
 
 # if __name__ == "__main__":

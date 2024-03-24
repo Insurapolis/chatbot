@@ -29,8 +29,7 @@ from rag.templates import (
     ANSWER_8,
     ANSWER_9,
 )
-from rag.memory import PostgresChatMessageHistory
-from rag.config import AzureChatOpenAIConfig, Postgres
+from rag.config import AzureChatOpenAIConfig
 from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
 
 
@@ -114,7 +113,7 @@ class LangChainChatbot:
         return chatbot_instance.get_llm_rag_chain(retriever)
 
 
-class DebugConversation:
+class DummyConversation:
     def __init__(self, model):
 
         self.memory = ChatMessageHistory()

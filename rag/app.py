@@ -12,14 +12,13 @@
 
 import uvicorn
 from langchain_community.callbacks import get_openai_callback
-from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
 from fastapi import Depends, FastAPI, Body
 from fastapi.responses import StreamingResponse
 
 from rag.memory import PostgresChatMessageHistory
 from rag.config import Query, Postgres
-from rag.llm import LangChainChatbot, DebugConversation
+from rag.llm import LangChainChatbot
 from rag.retriever import VectorDBClient, VectorDBCreator
 from rag.constants import DB_PATH, COLLECTION_NAME, DEBUG_MODE
 
@@ -37,15 +36,27 @@ chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
     config_path="./openai_config.yml", retriever=retriever
 )
 
+conn_string = Postgres.POSTGRES_URL
+
 
 @app.post("/chat")
 async def chat(
     query: Query = Body(...),
 ):
-    with get_openai_callback() as cb:
-        res = chain_rag(query.question)
-        print(chain_rag.memory)
+    chat_memory = PostgresChatMessageHistory(
+        user_id=444,
+        session_id="test",
+        connection_string=conn_string,
+        table_name="convchat",
+    )
 
+    with get_openai_callback() as cb:
+        res = chain_rag.invoke(
+            {"question": query.question, "chat_history": chat_memory.messages}
+        )
+
+    chat_memory.add_user_message(messages=query.question)
+    chat_memory.add_ai_message(message=res.get("answer"))
     return {
         "response": res,
         "total_tokens": cb.total_tokens,
