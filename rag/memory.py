@@ -21,7 +21,7 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
     def __init__(
         self,
         user_id: int,
-        session_id: str,
+        conversation_uuid: str,
         connection_string: str = DEFAULT_CONNECTION_STRING,
         table_name: str = "message_store",
     ):
@@ -35,7 +35,7 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
             logger.error(error)
 
         self.user_id = user_id
-        self.session_id = session_id
+        self.conversation_uuid = conversation_uuid
         self.table_name = table_name
 
         self._create_table_if_not_exists()
@@ -44,7 +44,6 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
         create_table_query = f"""CREATE TABLE IF NOT EXISTS {self.table_name} (
             id SERIAL PRIMARY KEY,
             conversation_uuid TEXT NOT NULL,
-            user_id INTEGER NOT NULL,
             message JSONB NOT NULL,
             tokens int NOT NULL,
             cost float NOT NULL,
@@ -57,9 +56,9 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
     def messages(self) -> List[BaseMessage]:  # type: ignore
         """Retrieve the messages from PostgreSQL"""
         query = (
-            f"SELECT message FROM {self.table_name} WHERE session_id = %s ORDER BY id;"
+            f"SELECT message FROM {self.table_name} WHERE conversation_uuid = %s ORDER BY id;"
         )
-        self.cursor.execute(query, (self.session_id,))
+        self.cursor.execute(query, (self.conversation_uuid,))
         items = [record["message"] for record in self.cursor.fetchall()]
         messages = messages_from_dict(items)
         return messages
@@ -69,14 +68,13 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
         from psycopg import sql
 
         query = sql.SQL(
-            "INSERT INTO {} (session_id, message, user_id, tokens, cost) VALUES (%s, %s, %s, %s, %s);"
+            "INSERT INTO {} (conversation_uuid, message, tokens, cost) VALUES (%s, %s, %s, %s);"
         ).format(sql.Identifier(self.table_name))
         self.cursor.execute(
             query,
             (
-                self.session_id,
+                self.conversation_uuid,
                 json.dumps(message_to_dict(message)),
-                self.user_id,
                 tokens,
                 cost,
             ),

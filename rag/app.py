@@ -14,6 +14,7 @@ import uvicorn
 import uuid
 from langchain_community.callbacks import get_openai_callback
 from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
+from langchain_core.messages import message_to_dict
 from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, Body
 from fastapi.responses import StreamingResponse
@@ -30,7 +31,8 @@ load_dotenv()
 
 conn_string = Postgres.POSTGRES_URL
 
-query_db = QueryConversations(connection_string=conn_string)
+# query_db = QueryConversations(connection_string=conn_string)
+# query_db.insert_dummy_data_into_tables(connection_string=conn_string)
 
 app = FastAPI()
 
@@ -50,27 +52,32 @@ chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
 async def chat(
     question: ChatQuestion = Body(...),
 ):
+
     chat_memory = PostgresChatMessageHistory(
-        user_id=444,
-        session_id="test",
+        user_id=question.user_id,
+        conversation_uuid=question.conversation_uuid,
         connection_string=conn_string,
         table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
     )
 
+    chat_history_prompt = chat_memory.messages[-2 * 2 :]
+    chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
+
     with get_openai_callback() as cb:
-        res = chain_rag.invoke(
-            {"question": question.question, "chat_history": chat_memory.messages}
+        res = chain_rag.invoke({"question": question.question, "chat_history": chat_history_prompt}
         )
 
     chat_memory.add_user_message(
-        messages=question.question, tokens=cb.prompt_tokens, cost=cb.total_cost
+        message=question.question, tokens=cb.prompt_tokens, cost=cb.total_cost
     )
     chat_memory.add_ai_message(
         message=res.get("answer"), tokens=cb.completion_tokens, cost=cb.total_cost
     )
 
     response_data = {
-        "response": res,
+        "question": res.get("question"),
+        "response": res.get("answer"),
+        "chat_history": chat_history_dict,
         "total_tokens": cb.total_tokens,
         "total_cost": cb.total_cost,
     }
@@ -78,28 +85,25 @@ async def chat(
     return JSONResponse(content=response_data, status_code=200)
 
 
-@app.post("/new-conversation")
-async def new_conversation(user: UserId = Body(...)):
-    conv_uuid = str(uuid.uuid4())
-    query_db.create_new_consersation(conv_uuid=conv_uuid, user_id=user.user_id)
-    response = {"user_id": user.user_id, "conversation": conv_uuid}
-    return JSONResponse(content=response, status_code=200)
+# @app.post("/new-conversation")
+# async def new_conversation(user: UserId = Body(...)):
+#     conv_uuid = str(uuid.uuid4())
+#     query_db.create_new_consersation(conv_uuid=conv_uuid, user_id=user.user_id)
+#     response = {"user_id": user.user_id, "conversation": conv_uuid}
+#     return JSONResponse(content=response, status_code=200)
 
 
-@app.get("/list-conversations")
-async def list_conversation(user: UserId = Body(...)):
-    return
+# @app.get("/list-conversations")
+# async def list_conversation(user: UserId = Body(...)):
+#     return
 
 
-@app.post("/new-user")
-async def create_user(user: NewUser = Body(...)):
-    query_db.create_new_user(
-        email=user.email, firstname=user.firstname, surname=user.surname
-    )
-    return JSONResponse(content="User created", status_code=200)
-
-
-# @app.get("/total-tokens")
+# @app.post("/create-user")
+# async def create_user(user: NewUser = Body(...)):
+#     query_db.create_new_user(
+#         email=user.email, firstname=user.firstname, surname=user.surname
+#     )
+#     return JSONResponse(content="User created", status_code=200)
 
 
 if __name__ == "__main__":

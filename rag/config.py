@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, model_serializer
 from rag.utils import load_conf
 from typing import List
+
 # from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
@@ -8,18 +9,22 @@ from dataclasses import dataclass
 
 load_dotenv()
 
+
 class NewUser(BaseModel):
-    email : str
-    firstname : str
-    surname : str
+    email: str
+    firstname: str
+    surname: str
+
 
 class UserId(BaseModel):
-    user_id : int
+    user_id: int
+
 
 class ChatQuestion(BaseModel):
     question: str
-    user_id : int
-    conversation_id : int
+    user_id: int
+    conversation_uuid: str
+
 
 class BaseOpenAIConfig(BaseModel):
     model_name: str = Field(...)
@@ -74,7 +79,7 @@ class VectorDatabaseFilter(BaseModel):
             "category": {"$in": self.category},
             "type": {"$in": self.type},
         }
-        
+
 
 @dataclass
 class Postgres:
