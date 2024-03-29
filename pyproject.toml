@@ -22,6 +22,7 @@ langchain = "^0.1.12"
 langchain-openai = "^0.0.8"
 sqlalchemy = "^2.0.29"
 psycopg2 = "^2.9.9"
+xlrd = "^2.0.1"
 
 
 [tool.poetry.group.dev.dependencies]

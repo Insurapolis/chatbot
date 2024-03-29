@@ -105,63 +105,64 @@ class QueryConversations:
         self.cursor.execute(query, (email, firstname, surname))
         self.connection.commit()
 
-    def get_list_conversation_by_user(self, user_id: int):
+    def get_conversation_by_uuid(self, uuid):
+
+        query = """
+        SELECT message FROM {table_messages} WHERE conversation_uuid = %s order by id
+        """.format(
+            table_messages=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES")
+        )
+
+        self.cursor.execute(query, (uuid,))
+        items = [record["message"] for record in self.cursor.fetchall()]
+
+        return items
+
+    def get_list_conversations_by_user(self, user_id: int):
+
         # Replace {table_name} with the actual property holding your table name, e.g.,
         query = """
-        SELECT id FROM {conversation_table_name}
+        SELECT uuid FROM {conversation_table_name}
         WHERE user_id = %s""".format(
             conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
         )
         # Execute the query with the provided user_id as a parameter to safely avoid SQL injection
         self.cursor.execute(query, (user_id,))
+
         # Fetch all rows of the query result
         rows = self.cursor.fetchall()
 
-        print(rows)
+        return rows
 
-        conversation_ids = [row[0] for row in rows]
+    def get_total_tokens_used_per_user(self, user_id):
+        query = """
+        SELECT SUM(m.tokens) AS total_tokens
+        FROM {table_conversation} AS c
+        JOIN {table_messages} AS m ON c.uuid = m.conversation_uuid
+        WHERE c.user_id = %s
+        """.format(
+            table_messages=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+            table_conversation=os.getenv("TABLE_NAME_CONVERSATION"),
+        )
 
-        return conversation_ids
+        self.cursor.execute(query, (user_id,))
+        result = self.cursor.fetchone()
 
-    # def insert_dummy_user_data(self,):
-
-    #     FILEPATH_USER = "./data/users.csv"
-
-    #     # Load the user data from the CSV file into a DataFrame
-    #     df_user = pd.read_csv(FILEPATH_USER)
-
-    #     # Iterate over the DataFrame rows
-    #     for index, row in df_user.iterrows():
-    #         # Prepare the SQL query for inserting a new user
-    #         query = """
-    #         INSERT INTO {table_name} (id, email, firstname, surname, created_at)
-    #         VALUES (%s, %s, %s, %s, %s);
-    #         """.format(table_name=os.getenv("TABLE_NAME_USER"))
-
-    #         # Extract data for the current row
-    #         user_data = (
-    #             row['id'],
-    #             row['email'],
-    #             row['firstname'],
-    #             row['surname'],
-    #             pd.to_datetime(row['created_at'])  # Ensure the timestamp is properly formatted
-    #         )
-
-    #         # Execute the query with the user data
-    #         self.cursor.execute(query, user_data)
-
-    #     # Commit the transaction to save changes to the database
-    #     self.connection.commit()
+        if result and result["total_tokens"] is not None:
+            return result["total_tokens"]
+        else:
+            return 0
 
     def insert_dummy_data_into_tables(self, connection_string):
         query_truncate = """
+        TRUNCATE TABLE conversations CASCADE;
         TRUNCATE TABLE userapp CASCADE;
         """
 
         self.cursor.execute(query=query_truncate)
         self.connection.commit()
 
-        FILEPATH_MESSAGES = "./data/messages.xlsx"
+        FILEPATH_MESSAGES = "./data/messages.xls"
         FILEPATH_USER = "./data/users.csv"
         FILEPATH_CONVERSATIONS = "./data/conversation.csv"
 
@@ -181,36 +182,29 @@ class QueryConversations:
             index=False,
         )
 
-        # df_messages = pd.read_excel(FILEPATH_MESSAGES)
-        
-        # # print(df_messages.head())
-        # # print(df_messages.dtypes)
-        # # df_messages.to_sql(
-        # #     os.getenv("TABLE_NAME_MESSAGES"), engine, if_exists="append", index=False
-        # # )
-        
-        # query = """
-        # INSERT INTO conversation_messages (id, conversation_uuid, message, tokens, cost, send_at)
-        # VALUES (%s, %s, %s, %s, %s, %s);
-        # """
+        df_messages = pd.read_excel(FILEPATH_MESSAGES)
 
-        # # Iterate over each row of data
-        # for row in df_messages:
-        #     # Convert string representation of JSON to actual JSON for the 'message' field
-        #     message_json = row['message']
-            
-        #     # Prepare data tuple for the SQL query
-        #     data_tuple = (
-        #         row['id'],
-        #         row['conversation_uuid'],
-        #         message_json,
-        #         row['tokens'],
-        #         row['cost'],
-        #         row['send_at']
-        #     )
-            
-        #     # Execute the SQL query with the data
-        #     self.cursor.execute(query, data_tuple)
-        
-        # # Commit the transaction to save the changes to the database
-        # self.connection.commit()
+        query_insert_messages = """
+        INSERT INTO {table_message}  
+        (conversation_uuid, message, tokens, cost, send_at)
+        VALUES (%s, %s, %s, %s, %s);
+        """.format(
+            table_message=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES")
+        )
+
+        for index, row in df_messages.iterrows():
+            conversation_uuid = row["conversation_uuid"]
+            message = row[
+                "message"
+            ]  # Ensure this is in a format accepted by PostgreSQL JSONB
+            tokens = row["tokens"]
+            cost = row["cost"]
+            send_at = row["send_at"]  # Ensure this is a timestamp
+
+            # Execute the query with parameters
+            self.cursor.execute(
+                query_insert_messages,
+                (conversation_uuid, message, tokens, cost, send_at),
+            )
+
+        self.connection.commit()

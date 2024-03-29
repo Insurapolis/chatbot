@@ -20,6 +20,10 @@ class UserId(BaseModel):
     user_id: int
 
 
+class ConversationUuid(BaseModel):
+    uuid: str
+
+
 class ChatQuestion(BaseModel):
     question: str
     user_id: int
