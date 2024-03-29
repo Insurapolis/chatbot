@@ -31,9 +31,8 @@ load_dotenv()
 
 conn_string = Postgres.POSTGRES_URL
 
-query_db = QueryConversations(connection_string=conn_string)
-query_db.insert_dummy_data_into_tables(connection_string=conn_string)
 
+query_db = QueryConversations(connection_string=conn_string)
 
 # collection client
 chroma_collection_client = VectorDBClient.get_chroma_collection_client(

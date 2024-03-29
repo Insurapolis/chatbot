@@ -60,6 +60,7 @@ class QueryConversations:
             logger.error(error)
 
         self.initiate_table_from_env()
+        self.insert_dummy_data()
 
     def initiate_table_from_env(self):
         self.cursor.execute(
@@ -153,35 +154,78 @@ class QueryConversations:
         else:
             return 0
 
-    def insert_dummy_data_into_tables(self, connection_string):
-        query_truncate = """
-        TRUNCATE TABLE conversations CASCADE;
-        TRUNCATE TABLE userapp CASCADE;
-        """
+    def insert_dummy_user_data(self, truncate: bool = False):
+        if truncate:
+            query_truncate = """
+            TRUNCATE TABLE {table_user} CASCADE;
+            """.format(
+                table_user=os.getenv("TABLE_NAME_USER")
+            )
 
-        self.cursor.execute(query=query_truncate)
-        self.connection.commit()
+            self.cursor.execute(query=query_truncate)
+            self.connection.commit()
 
-        FILEPATH_MESSAGES = "./data/messages.xls"
         FILEPATH_USER = "./data/users.csv"
-        FILEPATH_CONVERSATIONS = "./data/conversation.csv"
-
-        engine = create_engine(connection_string)
-
         df_user = pd.read_csv(FILEPATH_USER)
 
-        df_user.to_sql(
-            os.getenv("TABLE_NAME_USER"), engine, if_exists="append", index=False
+        query_user = """
+        INSERT INTO {table_user} (email, firstname, surname)
+        VALUES (%s, %s, %s)""".format(
+            table_user=os.getenv("TABLE_NAME_USER")
         )
 
-        df_conversation = pd.read_csv(filepath_or_buffer=FILEPATH_CONVERSATIONS)
-        df_conversation.to_sql(
-            os.getenv("TABLE_NAME_CONVERSATION"),
-            engine,
-            if_exists="append",
-            index=False,
+        for i, row in df_user.iterrows():
+            email = row["email"]
+            firstname = row["firstname"]
+            surnname = row["surname"]
+
+            self.cursor.execute(query_user, (email, firstname, surnname))
+
+        self.connection.commit()
+
+    def insert_dummy_conversation_data(self, truncate: bool = False):
+
+        if truncate:
+            query_truncate = """
+            TRUNCATE TABLE {table_conversation} CASCADE;
+            """.format(
+                table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
+            )
+
+            self.cursor.execute(query=query_truncate)
+            self.connection.commit()
+
+        FILEPATH_USER = "./data/conversation.csv"
+        df_conversation = pd.read_csv(FILEPATH_USER)
+
+        query_user = """
+        INSERT INTO {table_conversation} (uuid, user_id, active)
+        VALUES (%s, %s, %s)""".format(
+            table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
         )
 
+        for i, row in df_conversation.iterrows():
+            uuid = row["uuid"]
+            user_id = row["user_id"]
+            active = row["active"]
+
+            self.cursor.execute(query_user, (uuid, user_id, active))
+
+        self.connection.commit()
+
+    def insert_dummy_message_data(self, truncate: bool = False):
+
+        if truncate:
+            query_truncate = """
+            TRUNCATE TABLE {table_message} CASCADE;
+            """.format(
+                table_message=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES")
+            )
+
+            self.cursor.execute(query=query_truncate)
+            self.connection.commit()
+
+        FILEPATH_MESSAGES = "./data/messages.xls"
         df_messages = pd.read_excel(FILEPATH_MESSAGES)
 
         query_insert_messages = """
@@ -192,19 +236,50 @@ class QueryConversations:
             table_message=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES")
         )
 
-        for index, row in df_messages.iterrows():
+        for i, row in df_messages.iterrows():
             conversation_uuid = row["conversation_uuid"]
-            message = row[
-                "message"
-            ]  # Ensure this is in a format accepted by PostgreSQL JSONB
+            message = row["message"]
             tokens = row["tokens"]
             cost = row["cost"]
-            send_at = row["send_at"]  # Ensure this is a timestamp
+            send_at = row["send_at"]
 
-            # Execute the query with parameters
             self.cursor.execute(
                 query_insert_messages,
                 (conversation_uuid, message, tokens, cost, send_at),
             )
 
         self.connection.commit()
+
+    def insert_dummy_data(self):
+
+        query_empty_user = (
+            """SELECT EXISTS (SELECT 1 FROM {table_user} LIMIT 1);""".format(
+                table_user=os.getenv("TABLE_NAME_USER")
+            )
+        )
+
+        query_empty_conv = (
+            "SELECT EXISTS (SELECT 1 FROM {table_conversation} LIMIT 1);".format(
+                table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
+            )
+        )
+        query_empty_message = (
+            "SELECT EXISTS (SELECT 1 FROM {table_message} LIMIT 1);".format(
+                table_message=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES")
+            )
+        )
+
+        user_is_not_empty = self.cursor.execute(query_empty_user).fetchone()["exists"]
+        conv_is_not_empty = self.cursor.execute(query_empty_conv).fetchone()["exists"]
+        message_is_not_empty = self.cursor.execute(query_empty_message).fetchone()[
+            "exists"
+        ]
+
+        if not user_is_not_empty:
+            self.insert_dummy_user_data()
+
+        if not conv_is_not_empty:
+            self.insert_dummy_conversation_data()
+
+        if not message_is_not_empty:
+            self.insert_dummy_message_data()

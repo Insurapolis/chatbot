@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import List, Sequence, Union
+from dotenv import load_dotenv
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.chat_history import BaseChatMessageHistory
@@ -9,6 +10,8 @@ from langchain_core.messages import (
     message_to_dict,
     messages_from_dict,
 )
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
