@@ -1,16 +1,35 @@
 from pydantic import BaseModel, Field, model_serializer
 from rag.utils import load_conf
 from typing import List
+
 # from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 load_dotenv()
 
 
-class Query(BaseModel):
+class NewUser(BaseModel):
+    email: str
+    firstname: str
+    surname: str
+
+
+class UserId(BaseModel):
+    user_id: int
+
+
+class ConversationUuid(BaseModel):
+    uuid: str
+    
+class ConversationUpdateRequest(BaseModel):
+    new_name: str
+
+class ChatQuestion(BaseModel):
     question: str
+    user_id: int
+    conversation_uuid: str
 
 
 class BaseOpenAIConfig(BaseModel):
@@ -66,7 +85,7 @@ class VectorDatabaseFilter(BaseModel):
             "category": {"$in": self.category},
             "type": {"$in": self.type},
         }
-        
+
 
 @dataclass
 class Postgres:
@@ -80,3 +99,10 @@ class Postgres:
         if (POSTGRES_USER != None and POSTGRES_PASSWORD != None)
         else f"postgresql://{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
+    
+    # @staticmethod
+    # def postgres_url():
+        
+    #     return
+        
+        

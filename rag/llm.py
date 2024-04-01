@@ -115,8 +115,6 @@ class LangChainChatbot:
 
 class DummyConversation:
     def __init__(self, model):
-
-        self.memory = ChatMessageHistory()
         self.encoding = tiktoken.encoding_for_model(model)
         self.total_tokens = 0
         self.list_answer = [
@@ -135,20 +133,19 @@ class DummyConversation:
         num_tokens = len(self.encoding.encode(text))
         return num_tokens
 
-    def clear(self):
-        self.memory = ChatMessageHistory()
-        self.total_tokens = 0
-        self.list_answer = [
-            ANSWER_1,
-            ANSWER_2,
-            ANSWER_3,
-            ANSWER_4,
-            ANSWER_5,
-            ANSWER_6,
-            ANSWER_7,
-            ANSWER_8,
-            ANSWER_9,
-        ]
+    # def clear(self):
+    #     self.total_tokens = 0
+    #     self.list_answer = [
+    #         ANSWER_1,
+    #         ANSWER_2,
+    #         ANSWER_3,
+    #         ANSWER_4,
+    #         ANSWER_5,
+    #         ANSWER_6,
+    #         ANSWER_7,
+    #         ANSWER_8,
+    #         ANSWER_9,
+    #     ]
 
     def response(self):
         if self.list_answer:
@@ -162,13 +159,11 @@ class DummyConversation:
 
     def __call__(self, text: str):
         response = self.response()
-        self.memory.add_user_message(message=text)
-        self.memory.add_ai_message(message=response)
-        self.total_tokens += self.count_tokens(text=text)
-        self.total_tokens += self.count_tokens(text=response)
+        prompt_tokens = self.count_tokens(text=text)
+        completion_tokens = self.count_tokens(text=response)
 
         return {
-            "response": response,
-            "memory": self.memory.dict(),
-            "total_tokens": self.total_tokens,
+            "answer": response,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
         }
