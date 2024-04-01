@@ -67,7 +67,11 @@ async def new_conversation(user: UserId = Body(...)):
     query_db.create_new_consersation(
         conv_uuid=conv_uuid, user_id=user.user_id, conv_name=conv_name
     )
-    response = {"user_id": user.user_id, "conversation": conv_uuid}
+    response = {
+        "user_id": user.user_id,
+        "conversation_uuid": conv_uuid,
+        "conversation_name": conv_name,
+    }
     return JSONResponse(content=response, status_code=200)
 
 
@@ -101,14 +105,6 @@ async def get_conversation(conversation_uuid: str):
             raise HTTPException(status_code=404, detail="Conversation not found")
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# @app.post("/get-conversation")
-# async def get_conversation(conversation: ConversationUuid = Body(...)):
-
-#     conversation = query_db.get_conversation_by_uuid(uuid=conversation.uuid)
-
-#     return JSONResponse(content=conversation, status_code=200)
 
 
 @app.put("/conversations/{conversation_uuid}")
