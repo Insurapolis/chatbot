@@ -10,5 +10,6 @@ RUN poetry install --no-root
 # Set the working directory and copy your application code
 WORKDIR /code
 COPY ./rag /code/rag
+COPY ./data /code/data
 
 CMD ["poetry", "run", "uvicorn", "rag.debug:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
