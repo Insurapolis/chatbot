@@ -1,12 +1,20 @@
 import uvicorn
+from datetime import datetime
 import uuid
 import os
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from rag.memory import PostgresChatMessageHistory
 from rag.query import QueryConversations
-from rag.config import ChatQuestion, Postgres, UserId, NewUser, ConversationUuid
+from rag.config import (
+    ChatQuestion,
+    Postgres,
+    UserId,
+    NewUser,
+    ConversationUuid,
+    ConversationUpdateRequest,
+)
 from rag.llm import DummyConversation
 from langchain_core.messages import message_to_dict
 
@@ -41,46 +49,101 @@ async def chat(
         message=res.get("answer"), tokens=res.get("completion_tokens"), cost=0
     )
 
-    return {
-        "question": res.get("question"),
+    response_json = {
+        "question": question.question,
         "response": res.get("answer"),
         "chat_history": chat_history_dict,
         "total_tokens": res.get("completion_tokens") + res.get("prompt_tokens"),
         "total_cost": 444,
     }
 
+    return JSONResponse(content=response_json, status_code=200)
+
 
 @app.post("/new-conversation")
 async def new_conversation(user: UserId = Body(...)):
     conv_uuid = str(uuid.uuid4())
-    query_db.create_new_consersation(conv_uuid=conv_uuid, user_id=user.user_id)
+    conv_name = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    query_db.create_new_consersation(
+        conv_uuid=conv_uuid, user_id=user.user_id, conv_name=conv_name
+    )
     response = {"user_id": user.user_id, "conversation": conv_uuid}
     return JSONResponse(content=response, status_code=200)
 
 
-@app.post("/list-conversations")
-async def list_conversation(user: UserId = Body(...)):
+@app.get("/list-conversations")
+async def list_conversations(
+    user_id: str = Query(..., description="The ID of the user"),
+):
 
-    list_conversations_uuid = query_db.get_list_conversations_by_user(
-        user_id=user.user_id
-    )
+    list_conversations_uuid = query_db.get_list_conversations_by_user(user_id=user_id)
 
     response = {
-        "user_id": user.user_id,
+        "user_id": user_id,
         "conversations": {
-            i: str(row["uuid"]) for i, row in enumerate(list_conversations_uuid)
+            i: {"uuid": str(row["uuid"]), "name": row["name"]}
+            for i, row in enumerate(list_conversations_uuid)
         },
     }
 
     return JSONResponse(content=response, status_code=200)
 
 
-@app.post("/get-conversation")
-async def get_conversation(conversation: ConversationUuid = Body(...)):
+@app.get("/conversation-messages/{conversation_uuid}")
+async def get_conversation(conversation_uuid: str):
+    try:
+        conversation = query_db.get_conversation_messages_by_uuid(
+            uuid=conversation_uuid
+        )
+        if conversation:
+            return JSONResponse(content={"conversation": conversation}, status_code=200)
+        else:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    conversation = query_db.get_conversation_by_uuid(uuid=conversation.uuid)
 
-    return JSONResponse(content=conversation, status_code=200)
+# @app.post("/get-conversation")
+# async def get_conversation(conversation: ConversationUuid = Body(...)):
+
+#     conversation = query_db.get_conversation_by_uuid(uuid=conversation.uuid)
+
+#     return JSONResponse(content=conversation, status_code=200)
+
+
+@app.put("/conversations/{conversation_uuid}")
+async def update_conversation(
+    conversation_uuid: str, request_body: ConversationUpdateRequest
+):
+    try:
+        # Extract the new name from the request body
+        new_name = request_body.new_name
+
+        # Call the method to update the conversation name by UUID
+        success = query_db.update_conversation_name(conversation_uuid, new_name)
+        if success:
+            return {"message": "Conversation name updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    except Exception as e:
+        # Log the error or handle it as per your application's requirements
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/conversations/{conversation_uuid}")
+async def delete_conversation(conversation_uuid: str):
+    try:
+        # Call the method to delete the conversation by UUID
+        success = query_db.delete_conversation(conversation_uuid)
+        if success:
+            return JSONResponse(
+                content={"message": "Conversation deleted successfully"},
+                status_code=200,
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/get-user-tokens")

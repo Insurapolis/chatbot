@@ -22,7 +22,9 @@ class UserId(BaseModel):
 
 class ConversationUuid(BaseModel):
     uuid: str
-
+    
+class ConversationUpdateRequest(BaseModel):
+    new_name: str
 
 class ChatQuestion(BaseModel):
     question: str

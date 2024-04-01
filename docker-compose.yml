@@ -9,10 +9,10 @@ services:
       TABLE_NAME_USER : userapp
       TABLE_NAME_CONVERSATION : conversations
       TABLE_NAME_CONVERSATION_MESSAGES : messages
-      POSTGRES_USER: "myuser"
-      POSTGRES_PASSWORD: "mypassword"
-      POSTGRES_DB: "mydatabase"
-      POSTGRES_SERVER: "postgres"  
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+      POSTGRES_SERVER: postgres
       POSTGRES_PORT: "5432"
     depends_on:
      - postgres

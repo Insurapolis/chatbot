@@ -25,9 +25,9 @@ QUERY_CREATE_CONVERSATION_TABLE = """
 CREATE TABLE IF NOT EXISTS {conversation_table_name} (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     user_id INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    active BOOLEAN,
     FOREIGN KEY (user_id) REFERENCES {user_table_name}(id) ON DELETE CASCADE
 )
 """
@@ -84,16 +84,16 @@ class QueryConversations:
         )
         self.connection.commit()
 
-    def create_new_consersation(self, user_id: int, conv_uuid: str):
+    def create_new_consersation(self, user_id: int, conv_uuid: str, conv_name: str):
         query = """
-        INSERT INTO {table_name} (uuid, user_id, created_at, active)
-        VALUES (%s, %s, now(), TRUE);
+        INSERT INTO {table_name} (uuid, user_id, created_at, name)
+        VALUES (%s, %s, now(), %s);
         """.format(
             table_name=os.getenv("TABLE_NAME_CONVERSATION")
         )
 
         # Execute the query with the provided parameters to prevent SQL injection
-        self.cursor.execute(query, (conv_uuid, user_id))
+        self.cursor.execute(query, (conv_uuid, user_id, conv_name))
         self.connection.commit()
 
     def create_new_user(self, email: str, firstname: str, surname: str):
@@ -106,7 +106,7 @@ class QueryConversations:
         self.cursor.execute(query, (email, firstname, surname))
         self.connection.commit()
 
-    def get_conversation_by_uuid(self, uuid):
+    def get_conversation_messages_by_uuid(self, uuid):
 
         query = """
         SELECT message FROM {table_messages} WHERE conversation_uuid = %s order by id
@@ -123,7 +123,7 @@ class QueryConversations:
 
         # Replace {table_name} with the actual property holding your table name, e.g.,
         query = """
-        SELECT uuid FROM {conversation_table_name}
+        SELECT uuid, name FROM {conversation_table_name}
         WHERE user_id = %s""".format(
             conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
         )
@@ -134,6 +134,36 @@ class QueryConversations:
         rows = self.cursor.fetchall()
 
         return rows
+    
+    def update_conversation_name(self, conversation_uuid: str, new_name: str):
+        query = """
+        UPDATE {conversation_table_name} 
+        SET name = %s
+        WHERE uuid = %s;
+        """.format(conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION"))
+
+        # Execute the update query with the new name and UUID to prevent SQL injection
+        self.cursor.execute(query, (new_name, conversation_uuid))
+        self.connection.commit()
+
+        # Optionally, return whether the update was successful
+        return self.cursor.rowcount > 0
+
+    def delete_conversation(self, conversation_uuid: str):
+        query = """
+        DELETE FROM {conversation_table_name} WHERE uuid = %s;
+        """.format(
+            conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
+        )
+
+        # Execute the deletion query with the provided UUID to prevent SQL injection
+        self.cursor.execute(query, (conversation_uuid,))
+        # Commit the transaction to ensure that changes are saved
+        self.connection.commit()
+
+        # return whether the delete was successful,
+        # psycopg2 cursor.rowcount returns the number of rows that were deleted.
+        return self.cursor.rowcount > 0
 
     def get_total_tokens_used_per_user(self, user_id):
         query = """
@@ -199,7 +229,7 @@ class QueryConversations:
         df_conversation = pd.read_csv(FILEPATH_USER)
 
         query_user = """
-        INSERT INTO {table_conversation} (uuid, user_id, active)
+        INSERT INTO {table_conversation} (uuid, user_id, name)
         VALUES (%s, %s, %s)""".format(
             table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
         )
@@ -207,9 +237,9 @@ class QueryConversations:
         for i, row in df_conversation.iterrows():
             uuid = row["uuid"]
             user_id = row["user_id"]
-            active = row["active"]
+            name = row["name"]
 
-            self.cursor.execute(query_user, (uuid, user_id, active))
+            self.cursor.execute(query_user, (uuid, user_id, name))
 
         self.connection.commit()
 
