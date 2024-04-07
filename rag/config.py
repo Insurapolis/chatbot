@@ -24,11 +24,11 @@ class ConversationUuid(BaseModel):
     uuid: str
     
 class ConversationUpdateRequest(BaseModel):
-    new_name: str
+    name: str
+    user_id : int
 
 class ChatQuestion(BaseModel):
     question: str
-    user_id: int
     conversation_uuid: str
 
 
