@@ -84,17 +84,18 @@ class QueryConversations:
         )
         self.connection.commit()
 
-    def create_new_consersation(self, user_id: int, conv_uuid: str, conv_name: str):
-        query = """
-        INSERT INTO {table_name} (uuid, user_id, created_at, name)
-        VALUES (%s, %s, now(), %s);
-        """.format(
-            table_name=os.getenv("TABLE_NAME_CONVERSATION")
-        )
-
-        # Execute the query with the provided parameters to prevent SQL injection
-        self.cursor.execute(query, (conv_uuid, user_id, conv_name))
-        self.connection.commit()
+    def create_new_conversation(self, user_id: int, conv_uuid: str, conv_name: str):
+        try:
+            query = """
+            INSERT INTO {table_name} (uuid, user_id, created_at, name)
+            VALUES (%s, %s, now(), %s);
+            """.format(
+                table_name=os.getenv("TABLE_NAME_CONVERSATION")
+            )
+            self.cursor.execute(query, (conv_uuid, user_id, conv_name))
+            self.connection.commit()
+        except Exception as e:
+            raise ValueError(f"Failed to create conversation: {e}")
 
     def create_new_user(self, email: str, firstname: str, surname: str):
         query = """
@@ -134,13 +135,15 @@ class QueryConversations:
         rows = self.cursor.fetchall()
 
         return rows
-    
+
     def update_conversation_name(self, conversation_uuid: str, new_name: str):
         query = """
         UPDATE {conversation_table_name} 
         SET name = %s
         WHERE uuid = %s;
-        """.format(conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION"))
+        """.format(
+            conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
+        )
 
         # Execute the update query with the new name and UUID to prevent SQL injection
         self.cursor.execute(query, (new_name, conversation_uuid))
@@ -183,6 +186,43 @@ class QueryConversations:
             return result["total_tokens"]
         else:
             return 0
+
+    def conversation_name_exists(self, user_id: int, conversation_name: str) -> bool:
+        query = """
+        SELECT COUNT(*) AS number
+        FROM {table_conversation} 
+        WHERE name = %s AND user_id = %s;
+        """.format(
+            table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
+        )
+
+        # Execute the query
+        self.cursor.execute(query, (conversation_name, user_id))
+
+        # Fetch the result of the query
+        result_count = self.cursor.fetchone()["number"]
+
+        # If the count is greater than 0
+        return result_count > 0
+
+    def user_owns_conversation(self, user_id: int, conversation_uuid: str) -> bool:
+        # Define the SQL query to check for ownership.
+        query = """
+        SELECT EXISTS(
+            SELECT 1 FROM {conversation_table_name}
+            WHERE uuid = %s AND user_id = %s
+        );
+        """.format(
+            conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
+        )
+
+        # Execute the query
+        self.cursor.execute(query, (conversation_uuid, user_id))
+
+        # Fetch the result of the query. Returns a boolean.
+        is_owner = self.cursor.fetchone()["exists"]
+
+        return is_owner
 
     def insert_dummy_user_data(self, truncate: bool = False):
         if truncate:

@@ -23,7 +23,6 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
 
     def __init__(
         self,
-        user_id: int,
         conversation_uuid: str,
         connection_string: str = DEFAULT_CONNECTION_STRING,
         table_name: str = "message_store",
@@ -37,7 +36,6 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
         except psycopg.OperationalError as error:
             logger.error(error)
 
-        self.user_id = user_id
         self.conversation_uuid = conversation_uuid
         self.table_name = table_name
 
@@ -58,9 +56,7 @@ class PostgresChatMessageHistory(BaseChatMessageHistory):
     @property
     def messages(self) -> List[BaseMessage]:  # type: ignore
         """Retrieve the messages from PostgreSQL"""
-        query = (
-            f"SELECT message FROM {self.table_name} WHERE conversation_uuid = %s ORDER BY id;"
-        )
+        query = f"SELECT message FROM {self.table_name} WHERE conversation_uuid = %s ORDER BY id;"
         self.cursor.execute(query, (self.conversation_uuid,))
         items = [record["message"] for record in self.cursor.fetchall()]
         messages = messages_from_dict(items)
