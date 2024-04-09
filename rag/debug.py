@@ -4,6 +4,7 @@ import uuid
 import os
 from fastapi import FastAPI, Body, HTTPException, Query, status
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from rag.memory import PostgresChatMessageHistory
 from rag.query import QueryConversations
@@ -18,13 +19,27 @@ from rag.config import (
 from rag.llm import DummyConversation
 from langchain_core.messages import message_to_dict
 
+
+# The connection sttring to the db
 conn_string = Postgres.POSTGRES_URL
 
+# The instance for the db
 query_db = QueryConversations(connection_string=conn_string)
 
+# The chain for the dummy rag
+chain_debug = DummyConversation(model="gpt-3.5-turbo")
+
+# The app
 app = FastAPI()
 
-chain_debug = DummyConversation(model="gpt-3.5-turbo")
+# Add CORS middleware to the application
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/chat")
@@ -175,11 +190,11 @@ async def list_conversations(
     ```
     {
       "user_id": "123",
-      "conversations": {
-        "0": {"uuid": "uuid1", "name": "Conversation 1"},
-        "1": {"uuid": "uuid2", "name": "Conversation 2"},
-        "2": {"uuid": "uuid3", "name": "Conversation 3"}
-      }
+      "conversations": [
+        {"uuid": "uuid1", "name": "Conversation 1"},
+        {"uuid": "uuid2", "name": "Conversation 2"},
+        {"uuid": "uuid3", "name": "Conversation 3"}
+      ]
     }
     ```
     """
@@ -191,10 +206,10 @@ async def list_conversations(
 
         response = {
             "user_id": user_id,
-            "conversations": {
-                i: {"uuid": str(row["uuid"]), "name": row["name"]}
-                for i, row in enumerate(list_conversations_uuid)
-            },
+            "conversations": [
+                {"uuid": str(row["uuid"]), "name": row["name"]}
+                for row in list_conversations_uuid
+            ],
         }
 
         return JSONResponse(content=response, status_code=status.HTTP_200_OK)
@@ -372,26 +387,26 @@ async def update_conversation(
     }
     ```
     """
+
+    # Extract the new name from the request body
+    new_name = request_body.name
+
+    if not query_db.user_owns_conversation(
+        user_id=request_body.user_id, conversation_uuid=conversation_uuid
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have the rights to access this conversation",
+        )
+
+    if query_db.conversation_name_exists(
+        user_id=request_body.user_id, conversation_name=new_name
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Conversation name already exists",
+        )
     try:
-        # Extract the new name from the request body
-        new_name = request_body.name
-
-        if not query_db.user_owns_conversation(
-            user_id=request_body.user_id, conversation_uuid=conversation_uuid
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User does not have the rights to access this conversation",
-            )
-
-        if query_db.conversation_name_exists(
-            user_id=request_body.user_id, conversation_name=new_name
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Conversation name already exists",
-            )
-
         # Update the conversation name by UUID
         success = query_db.update_conversation_name(conversation_uuid, new_name)
         if success:
@@ -444,5 +459,5 @@ async def create_user(user: NewUser = Body(...)):
 #     return JSONResponse({"message": "conversation deleted"})
 
 
-if __name__ == "__main__":
-    uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
+# if __name__ == "__main__":
+#     uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
