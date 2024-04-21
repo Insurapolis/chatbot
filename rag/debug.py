@@ -94,6 +94,7 @@ async def chat(
         connection_string=conn_string,
         table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
     )
+
     chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
 
     res = chain_debug(question.question)
@@ -140,7 +141,10 @@ async def create_new_conversation(user: UserId = Body(...)):
     {
         "user_id": 123,
         "conversation_uuid": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
-        "conversation_name": "conv_20230401_153045"
+        "conversation_name": "conv_20230401_153045",
+        "chat_history" : [
+            {"user": "AI", "message": "The weather is sunny with a slight chance of rain in the afternoon."}
+        ],
     }
     ```
 
@@ -154,10 +158,26 @@ async def create_new_conversation(user: UserId = Body(...)):
         query_db.create_new_conversation(
             user_id=user.user_id, conv_uuid=conv_uuid, conv_name=conv_name
         )
+
+        chat_memory = PostgresChatMessageHistory(
+            conversation_uuid=conv_uuid,
+            connection_string=conn_string,
+            table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+        )
+
+        chat_memory.add_ai_message(
+            message="Bienvenu chez Insurapolis, comment puis-je vous aider ?", cost=0, tokens=12
+        )
+
+        chat_history_dict = [
+            message_to_dict(message) for message in chat_memory.messages
+        ]
+
         response_data = {
             "user_id": user.user_id,
             "conversation_uuid": conv_uuid,
             "conversation_name": conv_name,
+            "chat_history": chat_history_dict,
         }
 
         return JSONResponse(content=response_data, status_code=status.HTTP_200_OK)
