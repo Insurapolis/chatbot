@@ -20,10 +20,10 @@ from fastapi import Depends, FastAPI, Body
 from fastapi.responses import StreamingResponse
 
 from rag.query import QueryConversations
-from rag.memory import PostgresChatMessageHistory
 from rag.config import ChatQuestion, Postgres, UserId, NewUser, ConversationUuid
-from rag.llm import LangChainChatbot
-from rag.retriever import VectorDBClient
+from rag.chatbot.memory import PostgresChatMessageHistory
+from rag.chatbot.llm import LangChainChatbot
+from rag.chatbot.retriever import VectorDBClient
 from rag.constants import DB_PATH, COLLECTION_NAME, DEBUG_MODE
 from dotenv import load_dotenv
 

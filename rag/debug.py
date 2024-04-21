@@ -2,21 +2,22 @@ import uvicorn
 from datetime import datetime
 import uuid
 import os
-from fastapi import FastAPI, Body, HTTPException, Query, status
+from fastapi import FastAPI, Body, HTTPException, Query, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from rag.memory import PostgresChatMessageHistory
+from rag.auth import decode_token
+from rag.chatbot.memory import PostgresChatMessageHistory
+from rag.chatbot.llm import DummyConversation
 from rag.query import QueryConversations
 from rag.config import (
     ChatQuestion,
     Postgres,
     UserId,
     NewUser,
-    ConversationUuid,
     ConversationUpdateRequest,
 )
-from rag.llm import DummyConversation
+
 from langchain_core.messages import message_to_dict
 
 
@@ -94,6 +95,7 @@ async def chat(
         connection_string=conn_string,
         table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
     )
+
     chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
 
     res = chain_debug(question.question)
@@ -116,7 +118,7 @@ async def chat(
     return JSONResponse(content=response_json, status_code=200)
 
 
-@app.post("/conversation", status_code=status.HTTP_201_CREATED)
+@app.post("/conversation")
 async def create_new_conversation(user: UserId = Body(...)):
     """
     Creates a new conversation for a specified user with a unique UUID and a timestamp-based name.
@@ -140,7 +142,10 @@ async def create_new_conversation(user: UserId = Body(...)):
     {
         "user_id": 123,
         "conversation_uuid": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
-        "conversation_name": "conv_20230401_153045"
+        "conversation_name": "conv_20230401_153045",
+        "chat_history" : [
+            {"user": "AI", "message": "The weather is sunny with a slight chance of rain in the afternoon."}
+        ],
     }
     ```
 
@@ -154,10 +159,28 @@ async def create_new_conversation(user: UserId = Body(...)):
         query_db.create_new_conversation(
             user_id=user.user_id, conv_uuid=conv_uuid, conv_name=conv_name
         )
+
+        chat_memory = PostgresChatMessageHistory(
+            conversation_uuid=conv_uuid,
+            connection_string=conn_string,
+            table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+        )
+
+        chat_memory.add_ai_message(
+            message="Bienvenu chez Insurapolis, comment puis-je vous aider ?",
+            cost=0,
+            tokens=12,
+        )
+
+        chat_history_dict = [
+            message_to_dict(message) for message in chat_memory.messages
+        ]
+
         response_data = {
             "user_id": user.user_id,
             "conversation_uuid": conv_uuid,
             "conversation_name": conv_name,
+            "chat_history": chat_history_dict,
         }
 
         return JSONResponse(content=response_data, status_code=status.HTTP_200_OK)
@@ -445,6 +468,14 @@ async def get_user_tokens(user: UserId = Body(...)):
     )
 
 
+@app.get("/get-sub")
+async def get_sub(playload=Depends(decode_token)):
+
+    response = {"sub": playload["sub"], "email": playload["email"]}
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+
+
 @app.post("/create-user")
 async def create_user(user: NewUser = Body(...)):
     query_db.create_new_user(
@@ -453,11 +484,5 @@ async def create_user(user: NewUser = Body(...)):
     return JSONResponse(content="User created", status_code=200)
 
 
-# @app.post("/clear")
-# async def clear_conversation():
-#     chain_debug.clear()
-#     return JSONResponse({"message": "conversation deleted"})
-
-
-# if __name__ == "__main__":
-#     uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
+if __name__ == "__main__":
+    uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
