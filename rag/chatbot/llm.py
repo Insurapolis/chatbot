@@ -16,7 +16,7 @@ from langchain.prompts import (
 )
 
 from rag.config import AzureChatOpenAIConfig
-from rag.templates import (
+from rag.chatbot.templates import (
     SYSTEM_MESSAGE,
     HUMAN_MESSAGE,
     ANSWER_1,
@@ -30,7 +30,7 @@ from rag.templates import (
     ANSWER_9,
 )
 from rag.config import AzureChatOpenAIConfig
-from rag.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
+from rag.chatbot.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
 
 
 class LangChainChatbot:

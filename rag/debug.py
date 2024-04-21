@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from rag.auth import decode_token
-from rag.memory import PostgresChatMessageHistory
+from rag.chatbot.memory import PostgresChatMessageHistory
+from rag.chatbot.llm import DummyConversation
 from rag.query import QueryConversations
 from rag.config import (
     ChatQuestion,
@@ -16,7 +17,7 @@ from rag.config import (
     NewUser,
     ConversationUpdateRequest,
 )
-from rag.llm import DummyConversation
+
 from langchain_core.messages import message_to_dict
 
 
@@ -118,9 +119,7 @@ async def chat(
 
 
 @app.post("/conversation")
-async def create_new_conversation(
-    user: UserId = Body(...), payload=Depends(decode_token)
-):
+async def create_new_conversation(user: UserId = Body(...)):
     """
     Creates a new conversation for a specified user with a unique UUID and a timestamp-based name.
 
@@ -155,9 +154,6 @@ async def create_new_conversation(
     """
     conv_uuid = str(uuid.uuid4())
     conv_name = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    user_id_from_token = payload["sub"]
-    print(user_id_from_token)
 
     try:
         query_db.create_new_conversation(
@@ -472,18 +468,20 @@ async def get_user_tokens(user: UserId = Body(...)):
     )
 
 
+@app.get("/get-sub")
+async def get_sub(playload=Depends(decode_token)):
+
+    response = {"sub": playload["sub"], "email": playload["email"]}
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=response)
+
+
 @app.post("/create-user")
 async def create_user(user: NewUser = Body(...)):
     query_db.create_new_user(
         email=user.email, firstname=user.firstname, surname=user.surname
     )
     return JSONResponse(content="User created", status_code=200)
-
-
-# @app.post("/clear")
-# async def clear_conversation():
-#     chain_debug.clear()
-#     return JSONResponse({"message": "conversation deleted"})
 
 
 if __name__ == "__main__":
