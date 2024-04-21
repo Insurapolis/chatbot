@@ -2,10 +2,11 @@ import uvicorn
 from datetime import datetime
 import uuid
 import os
-from fastapi import FastAPI, Body, HTTPException, Query, status
+from fastapi import FastAPI, Body, HTTPException, Query, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from rag.auth import decode_token
 from rag.memory import PostgresChatMessageHistory
 from rag.query import QueryConversations
 from rag.config import (
@@ -13,7 +14,6 @@ from rag.config import (
     Postgres,
     UserId,
     NewUser,
-    ConversationUuid,
     ConversationUpdateRequest,
 )
 from rag.llm import DummyConversation
@@ -117,8 +117,10 @@ async def chat(
     return JSONResponse(content=response_json, status_code=200)
 
 
-@app.post("/conversation", status_code=status.HTTP_201_CREATED)
-async def create_new_conversation(user: UserId = Body(...)):
+@app.post("/conversation")
+async def create_new_conversation(
+    user: UserId = Body(...), payload=Depends(decode_token)
+):
     """
     Creates a new conversation for a specified user with a unique UUID and a timestamp-based name.
 
@@ -154,6 +156,9 @@ async def create_new_conversation(user: UserId = Body(...)):
     conv_uuid = str(uuid.uuid4())
     conv_name = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
+    user_id_from_token = payload["sub"]
+    print(user_id_from_token)
+
     try:
         query_db.create_new_conversation(
             user_id=user.user_id, conv_uuid=conv_uuid, conv_name=conv_name
@@ -166,7 +171,9 @@ async def create_new_conversation(user: UserId = Body(...)):
         )
 
         chat_memory.add_ai_message(
-            message="Bienvenu chez Insurapolis, comment puis-je vous aider ?", cost=0, tokens=12
+            message="Bienvenu chez Insurapolis, comment puis-je vous aider ?",
+            cost=0,
+            tokens=12,
         )
 
         chat_history_dict = [
@@ -479,5 +486,5 @@ async def create_user(user: NewUser = Body(...)):
 #     return JSONResponse({"message": "conversation deleted"})
 
 
-# if __name__ == "__main__":
-#     uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
+if __name__ == "__main__":
+    uvicorn.run("debug:app", host="localhost", port=8000, reload=True)

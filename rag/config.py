@@ -99,10 +99,4 @@ class Postgres:
         if (POSTGRES_USER != None and POSTGRES_PASSWORD != None)
         else f"postgresql://{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
-    
-    # @staticmethod
-    # def postgres_url():
-        
-    #     return
-        
         
