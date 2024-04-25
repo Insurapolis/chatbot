@@ -22,10 +22,11 @@ class UserId(BaseModel):
 
 class ConversationUuid(BaseModel):
     uuid: str
-    
+
+
 class ConversationUpdateRequest(BaseModel):
     name: str
-    user_id : int
+
 
 class ChatQuestion(BaseModel):
     question: str
@@ -99,4 +100,3 @@ class Postgres:
         if (POSTGRES_USER != None and POSTGRES_PASSWORD != None)
         else f"postgresql://{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
-        

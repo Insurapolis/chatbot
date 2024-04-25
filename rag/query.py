@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 QUERY_CREATE_USER_TABLE = """
 CREATE TABLE IF NOT EXISTS {user_table_name} (
     id SERIAL PRIMARY KEY,
+    uuid UUID NOT NULL UNIQUE,
     email TEXT NOT NULL,
     firstname TEXT NOT NULL,
     surname TEXT NOT NULL,
@@ -26,9 +27,9 @@ CREATE TABLE IF NOT EXISTS {conversation_table_name} (
     id SERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
     name TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
+    user_uuid UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    FOREIGN KEY (user_id) REFERENCES {user_table_name}(id) ON DELETE CASCADE
+    FOREIGN KEY (user_uuid) REFERENCES {user_table_name}(uuid) ON DELETE CASCADE
 )
 """
 
@@ -84,15 +85,15 @@ class QueryConversations:
         )
         self.connection.commit()
 
-    def create_new_conversation(self, user_id: int, conv_uuid: str, conv_name: str):
+    def create_new_conversation(self, user_uuid, conv_uuid: str, conv_name: str):
         try:
             query = """
-            INSERT INTO {table_name} (uuid, user_id, created_at, name)
+            INSERT INTO {table_name} (uuid, user_uuid, created_at, name)
             VALUES (%s, %s, now(), %s);
             """.format(
                 table_name=os.getenv("TABLE_NAME_CONVERSATION")
             )
-            self.cursor.execute(query, (conv_uuid, user_id, conv_name))
+            self.cursor.execute(query, (conv_uuid, user_uuid, conv_name))
             self.connection.commit()
         except Exception as e:
             raise ValueError(f"Failed to create conversation: {e}")
@@ -107,7 +108,7 @@ class QueryConversations:
         self.cursor.execute(query, (email, firstname, surname))
         self.connection.commit()
 
-    def get_conversation_messages_by_uuid(self, uuid):
+    def get_conversation_messages_by_uuid(self, conv_uuid):
 
         query = """
         SELECT message FROM {table_messages} WHERE conversation_uuid = %s order by id
@@ -115,21 +116,21 @@ class QueryConversations:
             table_messages=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES")
         )
 
-        self.cursor.execute(query, (uuid,))
+        self.cursor.execute(query, (conv_uuid,))
         items = [record["message"] for record in self.cursor.fetchall()]
 
         return items
 
-    def get_list_conversations_by_user(self, user_id: int):
+    def get_list_conversations_by_user(self, user_uuid: int):
 
         # Replace {table_name} with the actual property holding your table name, e.g.,
         query = """
         SELECT uuid, name FROM {conversation_table_name}
-        WHERE user_id = %s""".format(
+        WHERE user_uuid = %s""".format(
             conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
         )
         # Execute the query with the provided user_id as a parameter to safely avoid SQL injection
-        self.cursor.execute(query, (user_id,))
+        self.cursor.execute(query, (user_uuid,))
 
         # Fetch all rows of the query result
         rows = self.cursor.fetchall()
@@ -168,18 +169,18 @@ class QueryConversations:
         # psycopg2 cursor.rowcount returns the number of rows that were deleted.
         return self.cursor.rowcount > 0
 
-    def get_total_tokens_used_per_user(self, user_id):
+    def get_total_tokens_used_per_user(self, user_uuid):
         query = """
         SELECT SUM(m.tokens) AS total_tokens
         FROM {table_conversation} AS c
         JOIN {table_messages} AS m ON c.uuid = m.conversation_uuid
-        WHERE c.user_id = %s
+        WHERE c.user_uuid = %s
         """.format(
             table_messages=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
             table_conversation=os.getenv("TABLE_NAME_CONVERSATION"),
         )
 
-        self.cursor.execute(query, (user_id,))
+        self.cursor.execute(query, (user_uuid,))
         result = self.cursor.fetchone()
 
         if result and result["total_tokens"] is not None:
@@ -187,17 +188,17 @@ class QueryConversations:
         else:
             return 0
 
-    def conversation_name_exists(self, user_id: int, conversation_name: str) -> bool:
+    def conversation_name_exists(self, user_uuid, conversation_name: str) -> bool:
         query = """
         SELECT COUNT(*) AS number
         FROM {table_conversation} 
-        WHERE name = %s AND user_id = %s;
+        WHERE name = %s AND user_uuid = %s;
         """.format(
             table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
         )
 
         # Execute the query
-        self.cursor.execute(query, (conversation_name, user_id))
+        self.cursor.execute(query, (conversation_name, user_uuid))
 
         # Fetch the result of the query
         result_count = self.cursor.fetchone()["number"]
@@ -205,19 +206,19 @@ class QueryConversations:
         # If the count is greater than 0
         return result_count > 0
 
-    def user_owns_conversation(self, user_id: int, conversation_uuid: str) -> bool:
+    def user_owns_conversation(self, user_uuid, conversation_uuid: str) -> bool:
         # Define the SQL query to check for ownership.
         query = """
         SELECT EXISTS(
             SELECT 1 FROM {conversation_table_name}
-            WHERE uuid = %s AND user_id = %s
+            WHERE uuid = %s AND user_uuid = %s
         );
         """.format(
             conversation_table_name=os.getenv("TABLE_NAME_CONVERSATION")
         )
 
         # Execute the query
-        self.cursor.execute(query, (conversation_uuid, user_id))
+        self.cursor.execute(query, (conversation_uuid, user_uuid))
 
         # Fetch the result of the query. Returns a boolean.
         is_owner = self.cursor.fetchone()["exists"]
@@ -239,17 +240,18 @@ class QueryConversations:
         df_user = pd.read_csv(FILEPATH_USER)
 
         query_user = """
-        INSERT INTO {table_user} (email, firstname, surname)
-        VALUES (%s, %s, %s)""".format(
+        INSERT INTO {table_user} (uuid, email, firstname, surname)
+        VALUES (%s, %s, %s, %s)""".format(
             table_user=os.getenv("TABLE_NAME_USER")
         )
 
         for i, row in df_user.iterrows():
+            uuid = row["uuid"]
             email = row["email"]
             firstname = row["firstname"]
             surnname = row["surname"]
 
-            self.cursor.execute(query_user, (email, firstname, surnname))
+            self.cursor.execute(query_user, (uuid, email, firstname, surnname))
 
         self.connection.commit()
 
@@ -269,17 +271,17 @@ class QueryConversations:
         df_conversation = pd.read_csv(FILEPATH_USER)
 
         query_user = """
-        INSERT INTO {table_conversation} (uuid, user_id, name)
+        INSERT INTO {table_conversation} (uuid, user_uuid, name)
         VALUES (%s, %s, %s)""".format(
             table_conversation=os.getenv("TABLE_NAME_CONVERSATION")
         )
 
         for i, row in df_conversation.iterrows():
             uuid = row["uuid"]
-            user_id = row["user_id"]
+            user_uuid = row["user_uuid"]
             name = row["name"]
 
-            self.cursor.execute(query_user, (uuid, user_id, name))
+            self.cursor.execute(query_user, (uuid, user_uuid, name))
 
         self.connection.commit()
 

@@ -44,9 +44,7 @@ app.add_middleware(
 
 
 @app.post("/chat")
-async def chat(
-    question: ChatQuestion = Body(...),
-):
+async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token)):
     """
     Processes a chat question within a specified conversation.
 
@@ -189,9 +187,7 @@ async def create_new_conversation(user: UserId = Body(...)):
 
 
 @app.get("/conversations")
-async def list_conversations(
-    user_id: str = Query(..., description="The ID of the user"),
-):
+async def list_conversations(playload=Depends(decode_token)):
     """
     Lists all conversations belonging to a specific user, identified by the user ID.
 
@@ -221,14 +217,15 @@ async def list_conversations(
     }
     ```
     """
+    user_uuid = playload["sub"]
 
     try:
         list_conversations_uuid = query_db.get_list_conversations_by_user(
-            user_id=user_id
+            user_uuid=user_uuid
         )
 
         response = {
-            "user_id": user_id,
+            "user_uuid": user_uuid,
             "conversations": [
                 {"uuid": str(row["uuid"]), "name": row["name"]}
                 for row in list_conversations_uuid
@@ -241,7 +238,10 @@ async def list_conversations(
 
 
 @app.get("/conversation/{conversation_uuid}")
-async def get_conversation(conversation_uuid: str):
+async def get_conversation(
+    conversation_uuid: str,
+    playload=Depends(decode_token),
+):
     """
     Retrieves the conversation messages of a specified conversation by its UUID,
     provided the requesting user is the owner of the conversation.
@@ -293,21 +293,21 @@ async def get_conversation(conversation_uuid: str):
 
     """
 
-    # user = 1
+    user_uuid = playload["sub"]
 
-    # # Check if the user is the owner of the conversation.
-    # if not query_db.user_owns_conversation(
-    #     user_id=user, conversation_uuid=conversation_uuid
-    # ):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="User does not have the rights to access this conversation",
-    #     )
+    # Check if the user is the owner of the conversation.
+    if not query_db.user_owns_conversation(
+        user_uuid=user_uuid, conversation_uuid=conversation_uuid
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have the rights to access this conversation",
+        )
 
     try:
         # Fetch conversation messages by UUID
         conversation = query_db.get_conversation_messages_by_uuid(
-            uuid=conversation_uuid
+            conv_uuid=conversation_uuid
         )
         if conversation:
             return JSONResponse(
@@ -324,7 +324,9 @@ async def get_conversation(conversation_uuid: str):
 
 @app.put("/conversation/{conversation_uuid}")
 async def update_conversation(
-    conversation_uuid: str, request_body: ConversationUpdateRequest
+    conversation_uuid: str,
+    request_body: ConversationUpdateRequest,
+    playload=Depends(decode_token),
 ):
     """
     Updates the name of an existing conversation identified by its UUID.
@@ -360,7 +362,6 @@ async def update_conversation(
     Content-Type: application/json
     {
         "name": "New Conversation Name",
-        "user_id": "user123"
     }
     ```
 
@@ -411,11 +412,13 @@ async def update_conversation(
     ```
     """
 
+    user_uuid = playload["sub"]
+
     # Extract the new name from the request body
     new_name = request_body.name
 
     if not query_db.user_owns_conversation(
-        user_id=request_body.user_id, conversation_uuid=conversation_uuid
+        user_uuid=user_uuid, conversation_uuid=conversation_uuid
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -423,7 +426,7 @@ async def update_conversation(
         )
 
     if query_db.conversation_name_exists(
-        user_id=request_body.user_id, conversation_name=new_name
+        user_uuid=user_uuid, conversation_name=new_name
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -444,7 +447,7 @@ async def update_conversation(
 
 
 @app.delete("/conversation/{conversation_uuid}")
-async def delete_conversation(conversation_uuid: str):
+async def delete_conversation(conversation_uuid: str, playload=Depends(decode_token)):
     try:
         # Call the method to delete the conversation by UUID
         success = query_db.delete_conversation(conversation_uuid)
@@ -460,11 +463,11 @@ async def delete_conversation(conversation_uuid: str):
 
 
 @app.post("/get-user-tokens")
-async def get_user_tokens(user: UserId = Body(...)):
-    tokens_used = query_db.get_total_tokens_used_per_user(user_id=user.user_id)
+async def get_user_tokens(playload=Depends(decode_token)):
+    tokens_used = query_db.get_total_tokens_used_per_user(user_uuid=playload["sub"])
 
     return JSONResponse(
-        content={"tokens": tokens_used, "user_id": user.user_id}, status_code=200
+        content={"tokens": tokens_used, "user_uuid": playload["sub"]}, status_code=200
     )
 
 
@@ -474,14 +477,6 @@ async def get_sub(playload=Depends(decode_token)):
     response = {"sub": playload["sub"], "email": playload["email"]}
 
     return JSONResponse(status_code=status.HTTP_200_OK, content=response)
-
-
-@app.post("/create-user")
-async def create_user(user: NewUser = Body(...)):
-    query_db.create_new_user(
-        email=user.email, firstname=user.firstname, surname=user.surname
-    )
-    return JSONResponse(content="User created", status_code=200)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 import httpx
 from datetime import datetime, timezone
 import jwt
-from jwt import ExpiredSignatureError, DecodeError, InvalidTokenError
 import time
 from fastapi import HTTPException, Header, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 from dotenv import load_dotenv
 
@@ -21,6 +21,8 @@ CACHE_TIME = 86400  # seconds
 # Cache
 jwks_cache = {"keys": None, "fetched_time": 0}
 
+security = HTTPBearer()
+
 
 async def fetch_cognito_keys():
     if jwks_cache["keys"] and (time.time() - jwks_cache["fetched_time"] < CACHE_TIME):
@@ -34,16 +36,11 @@ async def fetch_cognito_keys():
 
 
 async def decode_token(
-    authorization: str = Header(...), keys=Depends(fetch_cognito_keys)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    keys=Depends(fetch_cognito_keys),
 ):
-    token_prefix = "Bearer "
-    if not authorization.startswith(token_prefix):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization header format.",
-        )
-    token = authorization[len(token_prefix) :]  # Strip the prefix to get the token
-
+    token = credentials.credentials
+    
     try:
         unverified_headers = jwt.get_unverified_header(token)
 
@@ -65,14 +62,7 @@ async def decode_token(
 
         # Additional payload validations
         current_time = datetime.now(timezone.utc).timestamp()
-
-        if payload.get("exp") is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid token: No expiration field",
-            )
-
-        if current_time > payload["exp"]:
+        if payload.get("exp") is None or current_time > payload["exp"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired, please re-login",
@@ -92,15 +82,15 @@ async def decode_token(
 
         return payload
 
-    except ExpiredSignatureError:
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired."
         )
-    except DecodeError:
+    except jwt.DecodeError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Error decoding token."
         )
-    except InvalidTokenError:
+    except jwt.InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token provided."
         )
