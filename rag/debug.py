@@ -77,16 +77,14 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
     ```
     """
 
-    # user = 1
-
-    # # Check if the user is the owner of the conversation.
-    # if not query_db.user_owns_conversation(
-    #     user_id=user, conversation_uuid=question.conversation_uuid
-    # ):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="User does not have the rights to access this conversation",
-    #     )
+    # Check if the user is the owner of the conversation.
+    if not query_db.user_owns_conversation(
+        user_uuid=playload["sub"], conversation_uuid=question.conversation_uuid
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have the rights to access this conversation",
+        )
 
     chat_memory = PostgresChatMessageHistory(
         conversation_uuid=question.conversation_uuid,
@@ -117,7 +115,7 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
 
 
 @app.post("/conversation")
-async def create_new_conversation(user: UserId = Body(...)):
+async def create_new_conversation(playload=Depends(decode_token)):
     """
     Creates a new conversation for a specified user with a unique UUID and a timestamp-based name.
 
@@ -152,10 +150,11 @@ async def create_new_conversation(user: UserId = Body(...)):
     """
     conv_uuid = str(uuid.uuid4())
     conv_name = f"conv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    user_uuid = playload["sub"]
 
     try:
         query_db.create_new_conversation(
-            user_id=user.user_id, conv_uuid=conv_uuid, conv_name=conv_name
+            user_id=user_uuid, conv_uuid=conv_uuid, conv_name=conv_name
         )
 
         chat_memory = PostgresChatMessageHistory(
@@ -175,7 +174,7 @@ async def create_new_conversation(user: UserId = Body(...)):
         ]
 
         response_data = {
-            "user_id": user.user_id,
+            "user_email": playload["email"],
             "conversation_uuid": conv_uuid,
             "conversation_name": conv_name,
             "chat_history": chat_history_dict,
@@ -217,15 +216,14 @@ async def list_conversations(playload=Depends(decode_token)):
     }
     ```
     """
-    user_uuid = playload["sub"]
 
     try:
         list_conversations_uuid = query_db.get_list_conversations_by_user(
-            user_uuid=user_uuid
+            user_uuid=playload["sub"]
         )
 
         response = {
-            "user_uuid": user_uuid,
+            "user_email": playload["email"],
             "conversations": [
                 {"uuid": str(row["uuid"]), "name": row["name"]}
                 for row in list_conversations_uuid
