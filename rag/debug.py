@@ -48,8 +48,9 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
     """
     Processes a chat question within a specified conversation.
 
-    This endpoint receives a chat question and conversation UUID. It first verifies
-    if the user is the owner of the specified conversation. If not, it returns a 403 Forbidden error.
+    This endpoint receives a chat question encapsulated in a Pydantic model along with the
+    user's token payload obtained via dependency injection. It first verifies if the user is
+    the owner of the specified conversation using the provided token. If not, it returns a 403 Forbidden error.
     Upon successful ownership verification, the method retrieves the chat history, processes the chat question,
     updates the chat history with the new question and its response, and returns the chat response along with
     the chat history.
@@ -57,6 +58,8 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
     Parameters:
     - question (ChatQuestion): A Pydantic model representing the chat question details, including user ID,
       conversation UUID, and the question text.
+    - playload (dict): A dictionary containing the decoded user information from the JWT, used for verifying
+      user ownership of the conversation.
 
     Returns:
     - JSONResponse: A JSON response containing the original question, the chat response, the chat history,
@@ -119,28 +122,24 @@ async def create_new_conversation(playload=Depends(decode_token)):
     """
     Creates a new conversation for a specified user with a unique UUID and a timestamp-based name.
 
-    This endpoint accepts a user ID within the request body and attempts to create a new conversation
+    This endpoint uses the decoded JWT payload to identify the user and attempts to create a new conversation
     record in the database for that user. Each conversation is assigned a unique UUID and a name
-    that includes the current date and time to ensure uniqueness. If the conversation is successfully
-    created, the endpoint returns the details of the new conversation including the user ID,
-    conversation UUID, and the conversation name. If the operation fails, due to a database error or
-    any other reason, a 400 Bad Request error is returned with the error details.
+    that includes the current date and time to ensure uniqueness. The initial chat history is populated
+    with a welcome message. If the conversation is successfully created, the endpoint returns the details of the new conversation including the user email, conversation UUID, and the conversation name. If the operation fails, due to a database error or any other reason, a 400 Bad Request error is returned with the error details.
 
     Parameters:
-    - user (UserId): A Pydantic model representing the user ID from the request body. This user ID
-      is associated with the new conversation.
+    - playload (dict): A dictionary containing the decoded user information from the JWT, used to identify the user and create the conversation.
 
     Returns:
-    - A JSON response containing the user ID, the newly generated conversation UUID, and the
-      conversation name if the creation is successful. For example:
+    - JSONResponse: A JSON response containing the user email, the newly generated conversation UUID, the conversation name, and initial chat history if the creation is successful. For example:
 
     ```
     {
-        "user_id": 123,
+        "user_email": "example@example.com",
         "conversation_uuid": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
         "conversation_name": "conv_20230401_153045",
-        "chat_history" : [
-            {"user": "AI", "message": "The weather is sunny with a slight chance of rain in the afternoon."}
+        "chat_history": [
+            {"user": "AI", "message": "Bienvenu chez Insurapolis, comment puis-je vous aider ?"}
         ],
     }
     ```
@@ -154,7 +153,7 @@ async def create_new_conversation(playload=Depends(decode_token)):
 
     try:
         query_db.create_new_conversation(
-            user_id=user_uuid, conv_uuid=conv_uuid, conv_name=conv_name
+            user_uuid=user_uuid, conv_uuid=conv_uuid, conv_name=conv_name
         )
 
         chat_memory = PostgresChatMessageHistory(
@@ -188,26 +187,20 @@ async def create_new_conversation(playload=Depends(decode_token)):
 @app.get("/conversations")
 async def list_conversations(playload=Depends(decode_token)):
     """
-    Lists all conversations belonging to a specific user, identified by the user ID.
+    Lists all conversations belonging to a specific user, identified by the user ID extracted from the JWT payload.
 
-    This endpoint retrieves a list of conversation UUIDs and their names that are associated with
-    the specified user ID. The user ID must be provided as a query parameter. The method queries
-    the database to get the list of conversations for the given user and returns them in a structured
-    JSON response.
+    This endpoint uses the decoded JWT payload to identify the user and retrieve a list of all conversation UUIDs and their names associated with that user. The method queries the database using the user ID obtained from the JWT payload and returns the list of conversations in a structured JSON response.
 
     Parameters:
-    - user_id (str): The unique identifier of the user whose conversations are to be listed.
-      This is passed as a query parameter.
+    - playload (dict): A dictionary containing the decoded user information from the JWT, used to identify the user whose conversations are to be listed.
 
     Returns:
-    - JSONResponse: A JSON response containing the user ID and a dictionary of the user's
-      conversations. Each entry in the dictionary is keyed by an enumeration index, with each value
-      being a dictionary containing the UUID and name of the conversation.
+    - JSONResponse: A JSON response containing the user email and a list of the user's conversations. Each conversation in the list is a dictionary containing the UUID and name of the conversation.
 
     Example of output:
     ```
     {
-      "user_id": "123",
+      "user_email": "example@example.com",
       "conversations": [
         {"uuid": "uuid1", "name": "Conversation 1"},
         {"uuid": "uuid2", "name": "Conversation 2"},
