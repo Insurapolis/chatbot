@@ -156,3 +156,5 @@ cython_debug/
 db/
 openai_config.yml
 notebooks/
+
+.DS_Store

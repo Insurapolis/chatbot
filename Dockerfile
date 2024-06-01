@@ -1,5 +1,8 @@
 FROM python:3.11
 
+ENV PEP517_BUILD_BACKEND="setuptools.build_meta"
+
+
 COPY ./pyproject.toml ./poetry.lock* /
 
 # Install poetry and dependencies

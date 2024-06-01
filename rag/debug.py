@@ -13,8 +13,6 @@ from rag.query import QueryConversations
 from rag.config import (
     ChatQuestion,
     Postgres,
-    UserId,
-    NewUser,
     ConversationUpdateRequest,
 )
 

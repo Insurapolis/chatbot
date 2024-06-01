@@ -1,10 +1,10 @@
 import yaml
 from typing import ChainMap
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-# from rag.constants import MODEL_NAME
+from rag.constants import MODEL_NAME
 
 
-# MODEL_NAME_RETRIEVER = SentenceTransformerEmbeddings(model_name=MODEL_NAME)
+MODEL_NAME_RETRIEVER = SentenceTransformerEmbeddings(model_name=MODEL_NAME)
 
 
 def load_conf(*file_paths: list[str]) -> ChainMap:
