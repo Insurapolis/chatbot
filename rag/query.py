@@ -1,65 +1,17 @@
-import os
 import pandas as pd
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    ForeignKey,
-    TIMESTAMP,
-    Float,
-)
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy import create_engine
+
+
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql import func
 from dotenv import load_dotenv
 import logging
 
+from rag.datamodels import User, Conversation, ConversationMessage
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 Base = declarative_base()
-
-
-class User(Base):
-    __tablename__ = os.getenv("TABLE_NAME_USER", "users")
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
-    email = Column(String, nullable=False)
-    firstname = Column(String, nullable=False)
-    surname = Column(String, nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    # Establish relationship, note that 'back_populates' should match the property in Conversation
-    conversations = relationship("Conversation", back_populates="user")
-
-
-class Conversation(Base):
-    __tablename__ = os.getenv("TABLE_NAME_CONVERSATION", "conversations")
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
-    name = Column(String, nullable=False)
-    user_uuid = Column(UUID(as_uuid=True), ForeignKey(User.uuid), nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    user = relationship("User", back_populates="conversations")
-    messages = relationship(
-        "ConversationMessage",
-        back_populates="conversation",
-        cascade="delete, delete-orphan",  # add cascade options
-    )
-
-
-class ConversationMessage(Base):
-    __tablename__ = os.getenv(
-        "TABLE_NAME_CONVERSATION_MESSAGES", "conversation_messages"
-    )
-    id = Column(Integer, primary_key=True)
-    conversation_uuid = Column(
-        UUID(as_uuid=True), ForeignKey(Conversation.uuid), nullable=False
-    )
-    message = Column(JSONB, nullable=False)
-    tokens = Column(Integer, nullable=False)
-    cost = Column(Float, nullable=False)
-    send_at = Column(TIMESTAMP, server_default=func.now())
-    conversation = relationship("Conversation", back_populates="messages")
 
 
 class QueryConversations:
