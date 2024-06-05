@@ -7,7 +7,14 @@ from sqlalchemy.sql import func
 from dotenv import load_dotenv
 import logging
 
-from rag.datamodels import User, Conversation, ConversationMessage
+from rag.datamodels import (
+    User,
+    Conversation,
+    ConversationMessage,
+    UserInsurance,
+    Package,
+    PackageLanguage,
+)
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -50,7 +57,6 @@ class QueryConversations:
             .all()
         )
 
-        print(messages)
         self.session.close()
         return [message[0] for message in messages]
 
@@ -127,6 +133,23 @@ class QueryConversations:
             > 0
         )
         return exists
+
+    def get_user_packages(self, user_uuid):
+        return (
+            self.session.query(
+                UserInsurance.package_id,
+                PackageLanguage.name,
+                UserInsurance.deductible,
+                UserInsurance.sum_insured,
+            )
+            .join(Package, UserInsurance.package_id == Package.id)
+            .join(PackageLanguage, Package.id == PackageLanguage.package_id)
+            .filter(
+                PackageLanguage.language_id == 2,
+                UserInsurance.user_sub == user_uuid,
+            )
+            .all()
+        )
 
     def insert_dummy_data(self):
         import json

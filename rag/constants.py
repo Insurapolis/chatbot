@@ -1,6 +1,6 @@
 DEBUG_MODE = False
-DB_PATH = "./db"
-COLLECTION_NAME = "CollectionStreamlit"
+DB_PATH = "./db_test"
+COLLECTION_NAME = "Collection1"
 MODEL_NAME = "llmrails/ember-v1"
 FILENAME_DATASET_RAG = "./data/dataset_RAG.xlsx"
 

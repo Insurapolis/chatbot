@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import os
 import pandas as pd
 import chromadb
+from chromadb import Collection
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from langchain_community.vectorstores import Chroma
 
 from rag.schema import InsuranceData
-from rag.utils import MODEL_NAME_RETRIEVER
+
 from rag.constants import (
-    FILENAME_DATASET_RAG,
     COL_INDEX,
     COL_TEXT,
     COL_TYPE,
@@ -18,71 +21,40 @@ from rag.constants import (
 )
 
 
-class VectorDBClient:
-    def __init__(self, db_path: str, collection_name: str) -> None:
-        """
-        Initialize the VectorDBClient instance.
-
-        :param db_path: The path to the database.
-        :param collection_name: The name of the collection.
-        """
-        self._db_path = db_path
-        self._collection_name = collection_name
-        self._chroma_client = self._init_chroma_client()
-
-    def _init_chroma_client(self) -> chromadb.PersistentClient:
-        """
-        Initialize the ChromaDB PersistentClient.
-
-        :return: A PersistentClient instance.
-        """
-        try:
-            return chromadb.PersistentClient(path=self._db_path)
-        except Exception as e:
-            raise ConnectionError(
-                f"Failed to connect to database at {self._db_path}: {e}"
-            )
-
-    @property
-    def db_path(self) -> str:
-        """Return the database path."""
-        return self._db_path
-
-    def collection_exists(self) -> bool:
-        """
-        Check if the collection exists in the database.
-
-        :return: True if the collection exists, False otherwise.
-        """
-        try:
-            return self._collection_name in [
-                collection.name for collection in self._chroma_client.list_collections()
-            ]
-        except Exception as e:
-            print(f"Error checking collection existence: {e}")
-            return False
+class VectorZurichChromaDbClient:
+    def __init__(self, retriever: Collection):
+        self.retriever = retriever
 
     @classmethod
-    def get_chroma_collection_client(cls, db_path: str, collection_name: str):
-        """
-        Get a Chroma client instance if the collection exists.
+    def get_retriever(
+        cls: VectorZurichChromaDbClient,
+        db_path: str,
+        collection_name: str,
+        embeddings: SentenceTransformerEmbeddingFunction,
+    ) -> VectorZurichChromaDbClient:
 
-        :param db_path: The path to the database.
-        :param collection_name: The name of the collection.
-        :return: A Chroma client instance or raise a ValueError if the collection does not exist.
-        """
-        instance = cls(db_path, collection_name)
-        if instance.collection_exists():
-            try:
-                return Chroma(
-                    persist_directory=instance.db_path,
-                    embedding_function=MODEL_NAME_RETRIEVER,
-                    collection_name=instance._collection_name,
-                )
-            except Exception as e:
-                raise RuntimeError(f"Failed to create Chroma client: {e}")
-        else:
-            raise ValueError("The collection was not found")
+        client = chromadb.PersistentClient(path=db_path)
+        retriever = client.get_collection(
+            name=collection_name, embedding_function=embeddings
+        )
+
+        return cls(retriever)
+
+    def get_zurich_package_info(
+        self, filter_packages: dict, top_k: int, user_question: str
+    ) -> str:
+        data_retriever = self.retriever.query(
+            query_texts=user_question, n_results=top_k, where=filter_packages
+        )
+
+        return data_retriever.get("documents")
+
+    def get_zurich_general_condition(self):
+
+        general_condition_retriever = self.retriever.get(
+            where={"category": {"$eq": [0.0]}}
+        )
+        return "\n".join(general_condition_retriever.get("documents"))
 
 
 class VectorDBCreator:

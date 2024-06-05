@@ -1,10 +1,12 @@
 import yaml
 from typing import ChainMap
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from chromadb.utils import embedding_functions
 from rag.constants import MODEL_NAME
 
 
-MODEL_NAME_RETRIEVER = SentenceTransformerEmbeddings(model_name=MODEL_NAME)
+sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+    model_name=MODEL_NAME
+)
 
 
 def load_conf(*file_paths: list[str]) -> ChainMap:
@@ -22,3 +24,15 @@ def load_conf(*file_paths: list[str]) -> ChainMap:
             configuration = configuration.new_child(yaml.safe_load(fo.read()))
 
     return configuration
+
+
+def format_package_data(data: list):
+    first_elements = [float(item[0]) for item in data]
+
+    formatted_strings_deductible = [f"{item[1]}: {item[2]},\n" for item in data]
+    formatted_strings_sum_insured = [f"{item[1]}: {item[3]},\n" for item in data]
+
+    deductible_string = "".join(formatted_strings_deductible)
+    sum_insured_string = "".join(formatted_strings_sum_insured)
+
+    return first_elements, deductible_string, sum_insured_string

@@ -3,40 +3,54 @@ import uvicorn
 import uuid
 from datetime import datetime
 from langchain_community.callbacks import get_openai_callback
-from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
 from langchain_core.messages import message_to_dict
+
 from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, Body, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 
+from rag.utils import format_package_data, sentence_transformer_ef
 from rag.auth import decode_token
 from rag.query import QueryConversations
-from rag.config import ChatQuestion, Postgres, ConversationUpdateRequest
+from rag.config import (
+    ChatQuestion,
+    Postgres,
+    ConversationUpdateRequest,
+    VectorDatabaseFilter,
+)
 from rag.chatbot.memory import PostgresChatMessageHistory
 from rag.chatbot.llm import LangChainChatbot
-from rag.chatbot.retriever import VectorDBClient
+from rag.chatbot.retriever import VectorZurichChromaDbClient
 from rag.constants import DB_PATH, COLLECTION_NAME
 from dotenv import load_dotenv
 
 load_dotenv()
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
-conn_string = Postgres.POSTGRES_URL
 
+# Create an instance of the Postgres class
+postgres_instance = Postgres()
 
+# Access the postgre_url property from the instance
+conn_string = postgres_instance.postgre_url
+
+# Get the query client
 query_db = QueryConversations(connection_string=conn_string)
 
-# collection client
-chroma_collection_client = VectorDBClient.get_chroma_collection_client(
-    collection_name=COLLECTION_NAME, db_path=DB_PATH
+
+chroma_collection: VectorZurichChromaDbClient = (
+    VectorZurichChromaDbClient.get_retriever(
+        collection_name=COLLECTION_NAME,
+        db_path=DB_PATH,
+        embeddings=sentence_transformer_ef,
+    )
 )
 
-retriever = chroma_collection_client.as_retriever(search_kwargs={"k": 2})
+# The langchain chain
+chain = LangChainChatbot.get_llm_rag_chain_cls(config_path="./openai_config.yml")
 
-chain_rag = LangChainChatbot.get_llm_rag_chain_cls(
-    config_path="./openai_config.yml", retriever=retriever
-)
-
+# FastApi app
 app = FastAPI()
 
 # Add CORS middleware to the application
@@ -61,34 +75,69 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
             detail="User does not have the rights to access this conversation",
         )
 
+    # user package_info
+    user_package = query_db.get_user_packages(user_uuid=playload["sub"])
+    list_user_packages, deductible_info, sum_insured_info = format_package_data(
+        data=user_package
+    )
+
+    # chat memory
     chat_memory = PostgresChatMessageHistory(
         conversation_uuid=question.conversation_uuid,
         connection_string=conn_string,
         table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
     )
-
+    # chat history for prompt
     chat_history_prompt = chat_memory.messages[-2 * 2 :]
+
+    # chat history for json response
     chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
 
+    # Retriver filter
+    user_filter = VectorDatabaseFilter(category=list_user_packages).filters()
+
+    # User package
+    user_package_data = chroma_collection.get_zurich_package_info(
+        filter_packages=user_filter, user_question=question.question, top_k=1
+    )
+
+    # General Condition
+    general_condition = chroma_collection.get_zurich_general_condition()
+
+    # Context for the LLM
+    context = f"{user_package_data}\n{general_condition}"
+
+    # Request LLM
     with get_openai_callback() as cb:
-        res = chain_rag.invoke(
-            {"question": question.question, "chat_history": chat_history_prompt}
+        res = chain.invoke(
+            {
+                "question": question.question,
+                "chat_history": chat_history_prompt,
+                "deductible": deductible_info,
+                "sum_insured": sum_insured_info,
+                "context": context,
+            }
         )
 
+    # Add human message to the DB
     chat_memory.add_user_message(
         message=question.question, tokens=cb.prompt_tokens, cost=cb.total_cost
     )
+
+    # Add AI message to the DB
     chat_memory.add_ai_message(
-        message=res.get("answer"), tokens=cb.completion_tokens, cost=cb.total_cost
+        message=res.get("text"), tokens=cb.completion_tokens, cost=cb.total_cost
     )
 
     response_data = {
         "question": res.get("question"),
-        "response": res.get("answer"),
+        "response": res.get("text"),
         "chat_history": chat_history_dict,
         "total_tokens": cb.total_tokens,
         "total_cost": cb.total_cost,
     }
+
+    print(response_data)
 
     return JSONResponse(content=response_data, status_code=200)
 
@@ -194,8 +243,7 @@ async def list_conversations(playload=Depends(decode_token)):
         response = {
             "user_email": playload["email"],
             "conversations": [
-                {"uuid": str(row["uuid"]), "name": row["name"]}
-                for row in list_conversations_uuid
+                {"uuid": str(row[0]), "name": row[1]} for row in list_conversations_uuid
             ],
         }
 
