@@ -1,5 +1,8 @@
 FROM python:3.11
 
+ENV PEP517_BUILD_BACKEND="setuptools.build_meta"
+
+
 COPY ./pyproject.toml ./poetry.lock* /
 
 # Install poetry and dependencies
@@ -12,4 +15,4 @@ WORKDIR /code
 COPY ./rag /code/rag
 COPY ./data /code/data
 
-CMD ["poetry", "run", "uvicorn", "rag.debug:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+CMD ["poetry", "run", "uvicorn", "rag.dummy_app:app", "--host", "0.0.0.0", "--port", "80", "--reload"]

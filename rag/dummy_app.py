@@ -5,7 +5,9 @@ import os
 from fastapi import FastAPI, Body, HTTPException, Query, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine
 
+from rag.datamodels import Base
 from rag.auth import decode_token
 from rag.chatbot.memory import PostgresChatMessageHistory
 from rag.chatbot.llm import DummyConversation
@@ -13,16 +15,21 @@ from rag.query import QueryConversations
 from rag.config import (
     ChatQuestion,
     Postgres,
-    UserId,
-    NewUser,
     ConversationUpdateRequest,
 )
+
 
 from langchain_core.messages import message_to_dict
 
 
-# The connection sttring to the db
-conn_string = Postgres.POSTGRES_URL
+# Create an instance of the Postgres class
+postgres_instance = Postgres()
+# Access the postgre_url property from the instance
+conn_string = postgres_instance.postgre_url
+
+engine = create_engine(conn_string)
+
+Base.metadata.create_all(engine)
 
 # The instance for the db
 query_db = QueryConversations(connection_string=conn_string)
@@ -218,8 +225,8 @@ async def list_conversations(playload=Depends(decode_token)):
         response = {
             "user_email": playload["email"],
             "conversations": [
-                {"uuid": str(row["uuid"]), "name": row["name"]}
-                for row in list_conversations_uuid
+                {"uuid": str(uuid), "name": name}
+                for uuid, name in list_conversations_uuid
             ],
         }
 
@@ -439,6 +446,7 @@ async def update_conversation(
 
 @app.delete("/conversation/{conversation_uuid}")
 async def delete_conversation(conversation_uuid: str, playload=Depends(decode_token)):
+
     try:
         # Call the method to delete the conversation by UUID
         success = query_db.delete_conversation(conversation_uuid)
@@ -471,4 +479,4 @@ async def get_sub(playload=Depends(decode_token)):
 
 
 if __name__ == "__main__":
-    uvicorn.run("debug:app", host="localhost", port=8000, reload=True)
+    uvicorn.run("dummy_app:app", host="localhost", port=8000, reload=True)

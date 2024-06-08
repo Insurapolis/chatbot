@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, model_serializer
 from rag.utils import load_conf
 from typing import List
@@ -5,19 +7,9 @@ from typing import List
 # from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field
 
 load_dotenv()
-
-
-class NewUser(BaseModel):
-    email: str
-    firstname: str
-    surname: str
-
-
-class UserId(BaseModel):
-    user_id: int
 
 
 class ConversationUuid(BaseModel):
@@ -72,31 +64,49 @@ class AzureChatOpenAIConfig(BaseOpenAIConfig):
             "azure_deployment": self.azure_deployment,
         }
 
+    @classmethod
+    def load_from_env(
+        cls: AzureChatOpenAIConfig, env_file: str = ".env"
+    ) -> AzureChatOpenAIConfig:
+        load_dotenv(env_file)
+        return cls(
+            model_name=os.getenv("MODEL_NAME"),
+            temperature=float(os.getenv("TEMPERATURE", 0)),
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+            api_version=os.getenv("API_VERSION"),
+            azure_deployment=os.getenv("AZURE_DEPLOYMENT"),
+        )
+
 
 class VectorDatabaseFilter(BaseModel):
-    company: str = None
     category: List = None
-    type: List = None
 
     @model_serializer
-    def serialize_model(self):
-
-        return {
-            "company": self.company,
-            "category": {"$in": self.category},
-            "type": {"$in": self.type},
-        }
+    def filters(self):
+        return {"category": {"$in": self.category}}
 
 
 @dataclass
 class Postgres:
-    POSTGRES_USER: str = os.getenv("POSTGRES_USER")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD")
-    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
-    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", 5432))
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "maicolrodrigues")
-    POSTGRES_URL: str = (
-        f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
-        if (POSTGRES_USER != None and POSTGRES_PASSWORD != None)
-        else f"postgresql://{POSTGRES_SERVER}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    POSTGRES_USER: str = field(default_factory=lambda: os.getenv("POSTGRES_USER"))
+    POSTGRES_PASSWORD: str = field(
+        default_factory=lambda: os.getenv("POSTGRES_PASSWORD")
     )
+    POSTGRES_SERVER: str = field(
+        default_factory=lambda: os.getenv("POSTGRES_SERVER", "localhost")
+    )
+    POSTGRES_PORT: str = field(
+        default_factory=lambda: os.getenv("POSTGRES_PORT", "5432")
+    )
+    POSTGRES_DB: str = field(
+        default_factory=lambda: os.getenv("POSTGRES_DB", "maicolrodrigues")
+    )
+
+    @property
+    def postgre_url(self) -> str:
+        """Dynamically generate the PostgreSQL connection URL."""
+        if self.POSTGRES_USER and self.POSTGRES_PASSWORD:
+            return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        else:
+            return f"postgresql://{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

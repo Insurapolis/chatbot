@@ -1,14 +1,15 @@
 # https://gist.github.com/jvelezmagic/03ddf4c452d011aae36b2a0f73d72f68
 
-from typing import Any
+from typing import Any, Union
 import random
 import tiktoken
+from pathlib import Path
+from dotenv import load_dotenv
 
 # from langchain_community.chat_message_histories import PostgresChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_openai import AzureChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
+from langchain.chains import ConversationalRetrievalChain, LLMChain
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -19,6 +20,9 @@ from rag.config import AzureChatOpenAIConfig
 from rag.chatbot.templates import (
     SYSTEM_MESSAGE,
     HUMAN_MESSAGE,
+)
+
+from rag.chatbot.dummy_answer import (
     ANSWER_1,
     ANSWER_2,
     ANSWER_3,
@@ -29,8 +33,6 @@ from rag.chatbot.templates import (
     ANSWER_8,
     ANSWER_9,
 )
-from rag.config import AzureChatOpenAIConfig
-from rag.chatbot.templates import SYSTEM_MESSAGE, HUMAN_MESSAGE, ANSWER_1, ANSWER_2, ANSWER_3
 
 
 class LangChainChatbot:
@@ -39,7 +41,7 @@ class LangChainChatbot:
     using AzureChatOpenAI and LangChain.
     """
 
-    def __init__(self, config_path="./openai_config.yml"):
+    def __init__(self, config_path: Union[Path, str, None]):
         """
         Initializes the chatbot with the given configuration file.
 
@@ -55,9 +57,17 @@ class LangChainChatbot:
 
         :return: Initialized AzureChatOpenAI model.
         """
-        config = AzureChatOpenAIConfig.load_from_yaml(
-            file_path=self.config_path
-        ).model_dump()
+        # Ensure the config_path is a string for splitting
+        file_extension = str(self.config_path).split(".")[-1]
+        if file_extension == "yml":
+            config = AzureChatOpenAIConfig.load_from_yaml(
+                file_path=self.config_path
+            ).model_dump()
+        elif file_extension == "env":
+            config = AzureChatOpenAIConfig.load_from_env(
+                env_file=self.config_path
+            ).model_dump()
+
         self.llm = AzureChatOpenAI(**config)
         return self.llm
 
@@ -75,7 +85,7 @@ class LangChainChatbot:
         )
         return self.prompt
 
-    def get_llm_rag_chain(self, retriever):
+    def get_llm_rag_chain(self):
         """
         Creates and returns a ConversationalRetrievalChain with the given retriever.
 
@@ -88,19 +98,12 @@ class LangChainChatbot:
         if not self.prompt:
             self._get_prompt()
 
-        # Create a chain using the provided retriever
-        chain = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-            verbose=True,
-            combine_docs_chain_kwargs={"prompt": self.prompt},
-        )
+        chain: LLMChain = LLMChain(llm=self.llm, prompt=self.prompt)
 
         return chain
 
     @classmethod
-    def get_llm_rag_chain_cls(cls, config_path, retriever):
+    def get_llm_rag_chain_cls(cls, config_path):
         """
         Class method to create an instance of LangChainChatbot and return a
         ConversationalRetrievalChain.
@@ -110,7 +113,7 @@ class LangChainChatbot:
         :return: A ConversationalRetrievalChain object.
         """
         chatbot_instance = cls(config_path)
-        return chatbot_instance.get_llm_rag_chain(retriever)
+        return chatbot_instance.get_llm_rag_chain()
 
 
 class DummyConversation:
@@ -132,20 +135,6 @@ class DummyConversation:
     def count_tokens(self, text):
         num_tokens = len(self.encoding.encode(text))
         return num_tokens
-
-    # def clear(self):
-    #     self.total_tokens = 0
-    #     self.list_answer = [
-    #         ANSWER_1,
-    #         ANSWER_2,
-    #         ANSWER_3,
-    #         ANSWER_4,
-    #         ANSWER_5,
-    #         ANSWER_6,
-    #         ANSWER_7,
-    #         ANSWER_8,
-    #         ANSWER_9,
-    #     ]
 
     def response(self):
         if self.list_answer:
