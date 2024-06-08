@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, model_serializer
 from rag.utils import load_conf
 from typing import List
@@ -61,6 +63,20 @@ class AzureChatOpenAIConfig(BaseOpenAIConfig):
             "api_version": self.api_version,
             "azure_deployment": self.azure_deployment,
         }
+
+    @classmethod
+    def load_from_env(
+        cls: AzureChatOpenAIConfig, env_file: str = ".env"
+    ) -> AzureChatOpenAIConfig:
+        load_dotenv(env_file)
+        return cls(
+            model_name=os.getenv("MODEL_NAME"),
+            temperature=float(os.getenv("TEMPERATURE", 0)),
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+            api_version=os.getenv("API_VERSION"),
+            azure_deployment=os.getenv("AZURE_DEPLOYMENT"),
+        )
 
 
 class VectorDatabaseFilter(BaseModel):

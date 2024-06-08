@@ -5,7 +5,9 @@ import os
 from fastapi import FastAPI, Body, HTTPException, Query, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine
 
+from rag.datamodels import Base
 from rag.auth import decode_token
 from rag.chatbot.memory import PostgresChatMessageHistory
 from rag.chatbot.llm import DummyConversation
@@ -16,14 +18,18 @@ from rag.config import (
     ConversationUpdateRequest,
 )
 
+
 from langchain_core.messages import message_to_dict
 
 
 # Create an instance of the Postgres class
 postgres_instance = Postgres()
-
 # Access the postgre_url property from the instance
 conn_string = postgres_instance.postgre_url
+
+engine = create_engine(conn_string)
+
+Base.metadata.create_all(engine)
 
 # The instance for the db
 query_db = QueryConversations(connection_string=conn_string)

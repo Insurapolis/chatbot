@@ -1,8 +1,10 @@
 # https://gist.github.com/jvelezmagic/03ddf4c452d011aae36b2a0f73d72f68
 
-from typing import Any
+from typing import Any, Union
 import random
 import tiktoken
+from pathlib import Path
+from dotenv import load_dotenv
 
 # from langchain_community.chat_message_histories import PostgresChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
@@ -32,13 +34,14 @@ from rag.chatbot.dummy_answer import (
     ANSWER_9,
 )
 
+
 class LangChainChatbot:
     """
     A class to handle the creation and interaction with a language model chatbot
     using AzureChatOpenAI and LangChain.
     """
 
-    def __init__(self, config_path="./openai_config.yml"):
+    def __init__(self, config_path: Union[Path, str, None]):
         """
         Initializes the chatbot with the given configuration file.
 
@@ -54,9 +57,17 @@ class LangChainChatbot:
 
         :return: Initialized AzureChatOpenAI model.
         """
-        config = AzureChatOpenAIConfig.load_from_yaml(
-            file_path=self.config_path
-        ).model_dump()
+        # Ensure the config_path is a string for splitting
+        file_extension = str(self.config_path).split(".")[-1]
+        if file_extension == "yml":
+            config = AzureChatOpenAIConfig.load_from_yaml(
+                file_path=self.config_path
+            ).model_dump()
+        elif file_extension == "env":
+            config = AzureChatOpenAIConfig.load_from_env(
+                env_file=self.config_path
+            ).model_dump()
+
         self.llm = AzureChatOpenAI(**config)
         return self.llm
 

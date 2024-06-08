@@ -48,7 +48,7 @@ chroma_collection: VectorZurichChromaDbClient = (
 )
 
 # The langchain chain
-chain = LangChainChatbot.get_llm_rag_chain_cls(config_path="./openai_config.yml")
+chain = LangChainChatbot.get_llm_rag_chain_cls(config_path="./.env")
 
 # FastApi app
 app = FastAPI()
