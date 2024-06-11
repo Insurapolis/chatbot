@@ -14,11 +14,11 @@ from rag.datamodels import (
     UserInsurance,
     Package,
     PackageLanguage,
+    Base,
 )
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-Base = declarative_base()
 
 
 class QueryConversations:

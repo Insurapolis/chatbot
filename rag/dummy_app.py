@@ -26,11 +26,6 @@ from langchain_core.messages import message_to_dict
 postgres_instance = Postgres()
 # Access the postgre_url property from the instance
 conn_string = postgres_instance.postgre_url
-
-engine = create_engine(conn_string)
-
-Base.metadata.create_all(engine)
-
 # The instance for the db
 query_db = QueryConversations(connection_string=conn_string)
 

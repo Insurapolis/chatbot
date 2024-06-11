@@ -50,7 +50,6 @@ class VectorZurichChromaDbClient:
         return data_retriever.get("documents")
 
     def get_zurich_general_condition(self):
-
         general_condition_retriever = self.retriever.get(
             where={"category": {"$eq": [0.0]}}
         )

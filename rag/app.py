@@ -26,7 +26,7 @@ from rag.constants import DB_PATH, COLLECTION_NAME
 from dotenv import load_dotenv
 
 load_dotenv()
-os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 # Create an instance of the Postgres class
@@ -232,6 +232,12 @@ async def list_conversations(playload=Depends(decode_token)):
         {"uuid": "uuid3", "name": "Conversation 3"}
       ]
     }
+    If no conversations :
+    {
+        "user_email": "example@example.com",
+        "conversations": []
+    }
+
     ```
     """
 
