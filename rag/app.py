@@ -126,12 +126,12 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
 
     # Add AI message to the DB
     chat_memory.add_ai_message(
-        message=res.get("text"), tokens=cb.completion_tokens, cost=cb.total_cost
+        message=res.content, tokens=cb.completion_tokens, cost=cb.total_cost
     )
 
     response_data = {
-        "question": res.get("question"),
-        "response": res.get("text"),
+        "question": question.question,
+        "response": res.content,
         "chat_history": chat_history_dict,
         "total_tokens": cb.total_tokens,
         "total_cost": cb.total_cost,

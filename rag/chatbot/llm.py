@@ -98,7 +98,7 @@ class LangChainChatbot:
         if not self.prompt:
             self._get_prompt()
 
-        chain: LLMChain = LLMChain(llm=self.llm, prompt=self.prompt)
+        chain = self.prompt | self.llm
 
         return chain
 

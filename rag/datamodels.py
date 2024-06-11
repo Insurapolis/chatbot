@@ -67,7 +67,7 @@ class Package(Base):
     __tablename__ = "package"
     id = Column(Integer, primary_key=True)
     company = Column(String(255), nullable=False, index=True)
-    name = Column(String(255), nullable=True)
+    name_base = Column(String(255), nullable=True)
     version = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=func.now())
     insurance = relationship("UserInsurance", back_populates="package")
@@ -78,7 +78,7 @@ class Package(Base):
 class Language(Base):
     __tablename__ = "language"
     id = Column(Integer, primary_key=True)
-    language = Column(String(255), nullable=False)
+    lang_code = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=func.now())
     package_languages = relationship("PackageLanguage", back_populates="language")
 
