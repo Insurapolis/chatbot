@@ -8,10 +8,20 @@ ANSWER_4 = "Bonjour"
 
 ANSWER_5 = "Perte, détérioration, destruction"
 
-ANSWER_6 = "Temporelle: Pendant la durée de l'assurance. Territoriale: À la maison, extensions possibles."
+ANSWER_6 = "Il fait très chaud aujourd'hui.\nJe préfère rester à l'intérieur.\nPeut-être que demain sera plus frais.\nProfitons du moment présent!"
 
 ANSWER_7 = "Non couvert: Vol simple hors domicile sans assurances complémentaires, perte/égarement, événements exclus (guerre, fission nucléaire...)"
 
 ANSWER_8 = "Cette table résume les principaux éléments de couverture et de restriction liés au vol dans les packages d'assurance CLASSIC et ALL RISK, incluant les franchises applicables et la validité territoriale et temporelle des couvertures."
 
-ANSWER_9 = "Exclusion du vol simple dans le cadre de l’assurance externe (sauf avec assurances complémentaires), de valeurs pécuniaires, et des dommages résultant de la perte ou de l’égarement. Restriction sur la couverture des bijoux en cas de vol à la maison et avec effraction (limitation à 20% de la somme d’assurance, max CHF 30’000) sauf conditions spécifiques pour le coffre-fort. Exclusions générales incluant les véhicules à moteur, bateaux, aéronefs, cryptomonnaies, et les événements non assurés comme guerre, fission nucléaire, etc."
+ANSWER_9 = "Apprendre une nouvelle langue est passionnant.\nCela demande beaucoup de pratique et de patience.\nChaque jour, j'apprends de nouveaux mots.\nC'est un voyage enrichissant."
+
+ANSWER_10 = "Voudrais-tu aller au cinéma ce soir?\nIl y a un nouveau film à l'affiche.\nNous pourrions prendre un dîner avant le film.\nDis-moi ce que tu en penses."
+
+ANSWER_11 = "Salut,\nComment ça va?\nJ'espère que tu vas bien.\nÀ plus tard!"
+
+ANSWER_12 = "Le marché local ouvre à neuf heures.\nIls ont les meilleurs fruits et légumes.\nJe pense acheter des fraises et des pommes.\nVeux-tu quelque chose en particulier?"
+
+ANSWER_13 = "Ce soir, pourquoi ne pas regarder un film?\nJ'ai quelques nouveautés intéressantes.\nNous pouvons commander une pizza.\nQu'en penses-tu?"
+
+ANSWER_14 = "As-tu besoin d'aide pour tes devoirs?\nJe suis disponible cet après-midi.\nNous pourrions nous rencontrer à la bibliothèque.\nLaisse-moi savoir si cela te convient."
