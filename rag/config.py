@@ -26,9 +26,11 @@ class ChatQuestion(BaseModel):
 
 
 class BaseOpenAIConfig(BaseModel):
-    model_name: str = Field(...)
+    model: str = Field(...)
     temperature: float = Field(default=0, ge=0.0, le=1.0)
-    openai_api_key: str = Field(...)
+    api_key: str = Field(...)
+    max_retries: int = Field(default=3)
+    timeout: int = Field(default=40)
 
     @classmethod
     def load_from_yaml(
@@ -45,6 +47,17 @@ class BaseOpenAIConfig(BaseModel):
             BaseOpenAIConfig: instance of the configuration
         """
         return cls(**dict(load_conf(file_path)))
+
+    @classmethod
+    def load_from_env(
+        cls: AzureChatOpenAIConfig, env_file: str = ".env"
+    ) -> AzureChatOpenAIConfig:
+        load_dotenv(env_file)
+        return cls(
+            model_name=os.getenv("MODEL_NAME"),
+            temperature=float(os.getenv("TEMPERATURE", 0)),
+            openai_api_key=os.getenv("OPENAI_API_KEY"),
+        )
 
 
 class AzureChatOpenAIConfig(BaseOpenAIConfig):
@@ -80,11 +93,11 @@ class AzureChatOpenAIConfig(BaseOpenAIConfig):
 
 
 class VectorDatabaseFilter(BaseModel):
-    category: List = None
+    mapping_package: List = None
 
     @model_serializer
     def filters(self):
-        return {"category": {"$in": self.category}}
+        return {"mapping_package": {"$in": self.mapping_package}}
 
 
 @dataclass

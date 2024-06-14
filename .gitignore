@@ -156,6 +156,8 @@ cython_debug/
 db/
 db_test/
 openai_config.yml
+azure_openai_config.yml
 notebooks/
+backup/
 
 .DS_Store

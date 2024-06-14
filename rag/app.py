@@ -9,7 +9,6 @@ from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, Body, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
-
 from rag.utils import format_package_data, sentence_transformer_ef
 from rag.auth import decode_token
 from rag.query import QueryConversations
@@ -48,7 +47,9 @@ chroma_collection: VectorZurichChromaDbClient = (
 )
 
 # The langchain chain
-chain = LangChainChatbot.get_llm_rag_chain_cls(config_path="./.env")
+chain = LangChainChatbot.rag_from_config(
+    config_path="./openai_config.yml", api_type="openai"
+)
 
 # FastApi app
 app = FastAPI()
@@ -94,18 +95,24 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
     chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
 
     # Retriver filter
-    user_filter = VectorDatabaseFilter(category=list_user_packages).filters()
+    user_filter = VectorDatabaseFilter(mapping_package=list_user_packages).filters()
+
+    print(user_filter)
 
     # User package
-    user_package_data = chroma_collection.get_zurich_package_info(
-        filter_packages=user_filter, user_question=question.question, top_k=1
+    user_package_data_info, list_ids_retriver = (
+        chroma_collection.get_zurich_package_info(
+            filter_packages=user_filter, user_question=question.question, top_k=2
+        )
     )
 
     # General Condition
     general_condition = chroma_collection.get_zurich_general_condition()
 
     # Context for the LLM
-    context = f"{user_package_data}\n{general_condition}"
+    context = (
+        f"{user_package_data_info}\nThe insurance general condition:{general_condition}"
+    )
 
     # Request LLM
     with get_openai_callback() as cb:
@@ -118,6 +125,8 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
                 "context": context,
             }
         )
+        
+    print(cb)
 
     # Add human message to the DB
     chat_memory.add_user_message(
