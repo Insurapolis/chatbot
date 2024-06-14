@@ -157,5 +157,6 @@ db/
 db_test/
 openai_config.yml
 notebooks/
+backup/
 
 .DS_Store

@@ -46,12 +46,17 @@ class VectorZurichChromaDbClient:
         data_retriever = self.retriever.query(
             query_texts=user_question, n_results=top_k, where=filter_packages
         )
+        
+        list_ids_retriever = data_retriever.get("ids")[0]
+        list_documents_retriver = data_retriever.get("documents")[0]
+        
+        data_string_document = "\n".join(list_documents_retriver)
 
-        return data_retriever.get("documents")
+        return data_string_document, list_ids_retriever
 
     def get_zurich_general_condition(self):
         general_condition_retriever = self.retriever.get(
-            where={"category": {"$eq": [0.0]}}
+            where={"mapping_package": {"$eq": [0]}}
         )
         return "\n".join(general_condition_retriever.get("documents"))
 

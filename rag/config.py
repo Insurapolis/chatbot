@@ -80,11 +80,11 @@ class AzureChatOpenAIConfig(BaseOpenAIConfig):
 
 
 class VectorDatabaseFilter(BaseModel):
-    category: List = None
+    mapping_package: List = None
 
     @model_serializer
     def filters(self):
-        return {"category": {"$in": self.category}}
+        return {"mapping_package": {"$in": self.mapping_package}}
 
 
 @dataclass

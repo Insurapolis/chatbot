@@ -27,7 +27,7 @@ def load_conf(*file_paths: list[str]) -> ChainMap:
 
 
 def format_package_data(data: list):
-    first_elements = [float(item[0]) for item in data]
+    first_elements = [int(item[0]) for item in data]
 
     formatted_strings_deductible = [f"{item[1]}: {item[2]},\n" for item in data]
     formatted_strings_sum_insured = [f"{item[1]}: {item[3]},\n" for item in data]
