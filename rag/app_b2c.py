@@ -102,10 +102,11 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
     # User package
     user_package_data_info, list_ids_retriver = (
         chroma_collection.get_zurich_package_info(
-            filter_packages=user_filter, user_question=question.question, top_k=2
+            filter_packages=user_filter, user_question=question.question, top_k=3
         )
     )
-
+    
+    
     # General Condition
     general_condition = chroma_collection.get_zurich_general_condition()
 
@@ -125,8 +126,6 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
                 "context": context,
             }
         )
-        
-    print(cb)
 
     # Add human message to the DB
     chat_memory.add_user_message(
@@ -502,4 +501,4 @@ async def get_user_tokens(playload=Depends(decode_token)):
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="localhost", port=8000, reload=True)
+    uvicorn.run("app_b2c:app", host="localhost", port=8000, reload=True)
