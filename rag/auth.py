@@ -1,4 +1,6 @@
 import httpx
+import boto3
+import uuid
 from datetime import datetime, timezone
 import jwt
 import time
@@ -10,13 +12,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AWS_REGION = os.getenv("AWS_REGION")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+DYNAMO_DB_TABLE = os.getenv("DYNAMO_DB_TABLE")
 USER_POOL_ID = os.getenv("USER_POOL_ID")
 CLIENT_ID = os.getenv("CLIENT_ID")
 COGNITO_ISSUER = f"https://cognito-idp.{AWS_REGION}.amazonaws.com/{USER_POOL_ID}"
 COGNITO_JWKS_URI = f"{COGNITO_ISSUER}/.well-known/jwks.json"
 
-
 CACHE_TIME = 86400  # seconds
+
+# DynamoDB
+session = boto3.Session(
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION,
+)
+dynamodb = session.resource("dynamodb")
+table = dynamodb.Table(DYNAMO_DB_TABLE)
 
 # Cache
 jwks_cache = {"keys": None, "fetched_time": 0}
@@ -40,7 +53,7 @@ async def decode_token(
     keys=Depends(fetch_cognito_keys),
 ):
     token = credentials.credentials
-    
+
     try:
         unverified_headers = jwt.get_unverified_header(token)
 
@@ -99,3 +112,28 @@ async def decode_token(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}",
         )
+
+
+def user_can_manage_client(managed_client_uuid: uuid.UUID, user_sub: str, user_email: str):
+    """
+    Check if the requester has the right to manage the specified user.
+    """
+
+    try:
+        response = table.get_item(Key={"id": str(user_sub), "email": str(user_email)})
+
+        item = response.get("Item", None)
+        list_managed_user_dicts = item.get("managedUsers", None)
+
+        if list_managed_user_dicts:
+            # Convert list of dictionaries with user IDs to list of UUIDs
+            list_managed_user_uuids = [
+                uuid.UUID(user_dict["id"]) for user_dict in list_managed_user_dicts
+            ]
+            if managed_client_uuid in list_managed_user_uuids:
+                return True
+
+        return False
+    except Exception as e:
+        print("Failed to query DynamoDB:", str(e))
+        return False
