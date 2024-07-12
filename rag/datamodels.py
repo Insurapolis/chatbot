@@ -16,42 +16,52 @@ from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 from dotenv import load_dotenv
 
+from rag.constants import (
+    TABLE_USER,
+    TABLE_CONVERSATION_MESSAGES,
+    TABLE_CONVERSATIONS,
+    TABLE_COVERAGE_TYPE,
+    TABLE_LANGUAGE,
+    TABLE_PACKAGE,
+    TABLE_PACKAGE_DESCRIPTION,
+    TABLE_PACKAGE_LANGUAGE,
+    TABLE_USER_INSURANCE,
+)
+
 
 load_dotenv()
 Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = os.getenv("TABLE_NAME_USER", "users")
+    __tablename__ = TABLE_USER
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
     email = Column(String, nullable=False)
     firstname = Column(String, nullable=False)
     surname = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    # Establish relationship, note that 'back_populates' should match the property in Conversation
     conversations = relationship("Conversation", back_populates="user")
 
 
 class Conversation(Base):
-    __tablename__ = os.getenv("TABLE_NAME_CONVERSATION", "conversations")
+    __tablename__ = TABLE_CONVERSATIONS
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
     name = Column(String, nullable=False)
-    user_uuid = Column(UUID(as_uuid=True), ForeignKey(User.uuid), nullable=False)
+    user_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), nullable=False) 
     created_at = Column(TIMESTAMP, server_default=func.now())
     user = relationship("User", back_populates="conversations")
     messages = relationship(
         "ConversationMessage",
         back_populates="conversation",
-        cascade="delete, delete-orphan",  # add cascade options
+        cascade="all, delete-orphan",
     )
 
 
 class ConversationMessage(Base):
-    __tablename__ = os.getenv(
-        "TABLE_NAME_CONVERSATION_MESSAGES", "conversation_messages"
-    )
+    __tablename__ = TABLE_CONVERSATION_MESSAGES
     id = Column(Integer, primary_key=True)
     conversation_uuid = Column(
         UUID(as_uuid=True), ForeignKey(Conversation.uuid), nullable=False
@@ -64,7 +74,7 @@ class ConversationMessage(Base):
 
 
 class Package(Base):
-    __tablename__ = "package"
+    __tablename__ = TABLE_PACKAGE
     id = Column(Integer, primary_key=True)
     company = Column(String(255), nullable=False, index=True)
     name_base = Column(String(255), nullable=True)
@@ -76,7 +86,7 @@ class Package(Base):
 
 
 class Language(Base):
-    __tablename__ = "language"
+    __tablename__ = TABLE_LANGUAGE
     id = Column(Integer, primary_key=True)
     lang_code = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=func.now())
@@ -84,13 +94,13 @@ class Language(Base):
 
 
 class CoverageType(Base):
-    __tablename__ = "coverage_type"
+    __tablename__ = TABLE_COVERAGE_TYPE
     id = Column(Integer, primary_key=True)
     type = Column(String(50), nullable=False)
 
 
 class PackageLanguage(Base):
-    __tablename__ = "package_language"
+    __tablename__ = TABLE_PACKAGE_LANGUAGE
     id = Column(Integer, primary_key=True)
     package_id = Column(
         Integer, ForeignKey("package.id", ondelete="CASCADE"), index=True
@@ -104,7 +114,7 @@ class PackageLanguage(Base):
 
 
 class PackageDescription(Base):
-    __tablename__ = "package_description"
+    __tablename__ = TABLE_PACKAGE_DESCRIPTION
     id = Column(Integer, primary_key=True)
     package_id = Column(
         Integer, ForeignKey("package.id", ondelete="CASCADE"), index=True
@@ -119,7 +129,7 @@ class PackageDescription(Base):
 
 
 class UserInsurance(Base):
-    __tablename__ = "user_insurances"
+    __tablename__ = TABLE_USER_INSURANCE
     id = Column(Integer, primary_key=True)
     user_sub = Column(String(255), nullable=False)
     package_id = Column(
