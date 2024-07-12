@@ -63,8 +63,14 @@ class QueryConversations:
     def get_list_conversations_by_user(self, user_uuid):
 
         conversations = (
-            self.session.query(Conversation.uuid, Conversation.name)
+            self.session.query(
+                Conversation.uuid,
+                Conversation.name,
+                func.max(ConversationMessage.send_at),
+            )
+            .join(ConversationMessage)
             .filter(Conversation.user_uuid == user_uuid)
+            .group_by(Conversation.uuid, Conversation.name)
             .all()
         )
 
@@ -172,7 +178,10 @@ class QueryConversations:
             df_conversation = pd.read_csv("./data/conversation.csv")
             for index, row in df_conversation.iterrows():
                 conversation = Conversation(
-                    uuid=row["uuid"], user_uuid=row["user_uuid"], name=row["name"]
+                    uuid=row["uuid"],
+                    user_uuid=row["user_uuid"],
+                    name=row["name"],
+                    created_by=row["created_by"],
                 )
                 self.session.add(conversation)
 

@@ -234,7 +234,12 @@ async def list_conversations(
             "user_email": playload["email"],
             "managed_client_uuid": str(managed_client_uuid),
             "conversations": [
-                {"uuid": str(row[0]), "name": row[1]} for row in list_conversations_uuid
+                {
+                    "uuid": str(row[0]),
+                    "name": row[1],
+                    "datetime_last_message": row[2].isoformat(),
+                }
+                for row in list_conversations_uuid
             ],
         }
 
