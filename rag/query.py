@@ -1,3 +1,4 @@
+import uuid
 import pandas as pd
 from sqlalchemy import create_engine
 
@@ -33,10 +34,16 @@ class QueryConversations:
         except Exception as error:
             logger.error(error)
 
-    def create_new_conversation(self, user_uuid, conv_uuid: str, conv_name: str):
+    def create_new_conversation(
+        self,
+        user_uuid: uuid.UUID,
+        conv_uuid: str,
+        conv_name: str,
+        created_by: uuid.UUID,
+    ):
 
         new_conversation = Conversation(
-            uuid=conv_uuid, user_uuid=user_uuid, name=conv_name
+            uuid=conv_uuid, user_uuid=user_uuid, name=conv_name, created_by=created_by
         )
         self.session.add(new_conversation)
         self.session.commit()

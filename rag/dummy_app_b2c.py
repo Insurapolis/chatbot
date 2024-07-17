@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 
+from rag.constants import TABLE_CONVERSATION_MESSAGES
 from rag.datamodels import Base
 from rag.auth import decode_token
 from rag.chatbot.memory import PostgresChatMessageHistory
@@ -94,7 +95,7 @@ async def chat(question: ChatQuestion = Body(...), playload=Depends(decode_token
     chat_memory = PostgresChatMessageHistory(
         conversation_uuid=question.conversation_uuid,
         connection_string=conn_string,
-        table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+        table_name=TABLE_CONVERSATION_MESSAGES,
     )
 
     chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
@@ -155,13 +156,16 @@ async def create_new_conversation(playload=Depends(decode_token)):
 
     try:
         query_db.create_new_conversation(
-            user_uuid=user_uuid, conv_uuid=conv_uuid, conv_name=conv_name
+            user_uuid=user_uuid,
+            conv_uuid=conv_uuid,
+            conv_name=conv_name,
+            created_by=user_uuid,
         )
 
         chat_memory = PostgresChatMessageHistory(
             conversation_uuid=conv_uuid,
             connection_string=conn_string,
-            table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+            table_name=TABLE_CONVERSATION_MESSAGES,
         )
 
         chat_memory.add_ai_message(
@@ -478,4 +482,4 @@ async def get_sub(playload=Depends(decode_token)):
 
 
 if __name__ == "__main__":
-    uvicorn.run("dummy_app:app", host="localhost", port=8000, reload=True)
+    uvicorn.run("dummy_app_b2c:app", host="localhost", port=8000, reload=True)
