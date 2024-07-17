@@ -220,7 +220,11 @@ async def list_conversations(playload=Depends(decode_token)):
         response = {
             "user_email": playload["email"],
             "conversations": [
-                {"uuid": str(row[0]), "name": row[1], "datetime_last_message": row[2]}
+                {
+                    "uuid": str(row[0]),
+                    "name": row[1],
+                    "datetime_last_message": row[2].isoformat(),
+                }
                 for row in list_conversations_uuid
             ],
         }

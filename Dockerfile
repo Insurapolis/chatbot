@@ -15,4 +15,4 @@ WORKDIR /code
 COPY ./rag /code/rag
 COPY ./data /code/data
 
-CMD ["poetry", "run", "uvicorn", "rag.dummy_app_b2b:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+CMD ["poetry", "run", "uvicorn", "rag.dummy_app_b2c:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
