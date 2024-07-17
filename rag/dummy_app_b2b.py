@@ -6,6 +6,7 @@ from fastapi import FastAPI, Body, HTTPException, status, Depends, Header
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from rag.constants import TABLE_CONVERSATION_MESSAGES
 from rag.datamodels import Base
 from rag.auth import decode_token, user_can_manage_client
 from rag.chatbot.memory import PostgresChatMessageHistory
@@ -72,7 +73,7 @@ async def chat(
     chat_memory = PostgresChatMessageHistory(
         conversation_uuid=question.conversation_uuid,
         connection_string=conn_string,
-        table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+        table_name=TABLE_CONVERSATION_MESSAGES,
     )
 
     chat_history_dict = [message_to_dict(message) for message in chat_memory.messages]
@@ -123,7 +124,7 @@ async def create_new_conversation(
         chat_memory = PostgresChatMessageHistory(
             conversation_uuid=conv_uuid,
             connection_string=conn_string,
-            table_name=os.getenv("TABLE_NAME_CONVERSATION_MESSAGES"),
+            table_name=TABLE_CONVERSATION_MESSAGES,
         )
 
         chat_memory.add_ai_message(
