@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 import logging
 
 from rag.datamodels import (
-    User,
     Conversation,
     ConversationMessage,
     UserInsurance,
@@ -46,13 +45,6 @@ class QueryConversations:
             uuid=conv_uuid, user_uuid=user_uuid, name=conv_name, created_by=created_by
         )
         self.session.add(new_conversation)
-        self.session.commit()
-        self.session.close()
-
-    def create_new_user(self, email: str, firstname: str, surname: str):
-
-        new_user = User(email=email, firstname=firstname, surname=surname)
-        self.session.add(new_user)
         self.session.commit()
         self.session.close()
 
@@ -166,19 +158,6 @@ class QueryConversations:
 
     def insert_dummy_data(self):
         import json
-
-        # Implement the logic to check if the tables are empty and insert data as needed
-        if self.session.query(User).count() == 0:
-            # Insert user data from CSV
-            df_user = pd.read_csv("./data/users.csv")
-            for index, row in df_user.iterrows():
-                user = User(
-                    uuid=row["uuid"],
-                    email=row["email"],
-                    firstname=row["firstname"],
-                    surname=row["surname"],
-                )
-                self.session.add(user)
 
         if self.session.query(Conversation).count() == 0:
             # Insert conversation data from CSV
