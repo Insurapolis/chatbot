@@ -33,26 +33,14 @@ load_dotenv()
 Base = declarative_base()
 
 
-class User(Base):
-    __tablename__ = TABLE_USER
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
-    email = Column(String, nullable=False)
-    firstname = Column(String, nullable=False)
-    surname = Column(String, nullable=False)
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    conversations = relationship("Conversation", back_populates="user")
-
-
 class Conversation(Base):
     __tablename__ = TABLE_CONVERSATIONS
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
     name = Column(String, nullable=False)
-    user_uuid = Column(UUID(as_uuid=True), ForeignKey("users.uuid"), nullable=False)
-    created_by = Column(UUID(as_uuid=True), nullable=False) 
+    user_uuid = Column(UUID(as_uuid=True), nullable=False)
+    created_by = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    user = relationship("User", back_populates="conversations")
     messages = relationship(
         "ConversationMessage",
         back_populates="conversation",
