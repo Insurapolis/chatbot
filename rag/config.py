@@ -54,9 +54,9 @@ class BaseOpenAIConfig(BaseModel):
     ) -> AzureChatOpenAIConfig:
         load_dotenv(env_file)
         return cls(
-            model_name=os.getenv("MODEL_NAME"),
+            model=os.getenv("MODEL_NAME"),
             temperature=float(os.getenv("TEMPERATURE", 0)),
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
+            api_key=os.getenv("OPENAI_API_KEY"),
         )
 
 

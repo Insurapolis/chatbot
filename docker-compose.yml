@@ -3,8 +3,7 @@ version : '3.8'
 services:
   app:
     build: .
-    ports :
-      - "8000:80"
+    container_name: chatbot
     environment:
       AWS_REGION : ${AWS_REGION}
       USER_POOL_ID : ${USER_POOL_ID}
@@ -15,25 +14,11 @@ services:
       TABLE_NAME_USER : userapp
       TABLE_NAME_CONVERSATION : conversations
       TABLE_NAME_CONVERSATION_MESSAGES : messages
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydatabase
-      POSTGRES_SERVER: postgres
-      POSTGRES_PORT: 5432
-    depends_on:
-     - postgres
-
-
-  postgres:
-    image: postgres:latest
-    environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydatabase
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_SERVER: db  
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      MODEL_NAME :  ${MODEL_NAME}
+      TEMPERATURE  : ${TEMPERATURE}
+      OPENAI_API_KEY  : ${OPENAI_API_KEY}

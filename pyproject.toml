@@ -26,6 +26,7 @@ xlrd = "^2.0.1"
 pyjwt = "^2.8.0"
 cryptography = "^42.0.5"
 boto3 = "^1.34.140"
+datamodels = {git = "https://github.com/Insurapolis/datamodels.git"}
 
 
 [tool.poetry.group.dev.dependencies]
