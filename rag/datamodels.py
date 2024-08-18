@@ -66,6 +66,7 @@ class Package(Base):
     id = Column(Integer, primary_key=True)
     company = Column(String(255), nullable=False, index=True)
     name_base = Column(String(255), nullable=True)
+    product_base = Column(String(255), nullable=True)
     version = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=func.now())
     insurance = relationship("UserInsurance", back_populates="package")
@@ -124,7 +125,7 @@ class UserInsurance(Base):
         Integer, ForeignKey("package.id", ondelete="CASCADE"), index=True
     )
     deductible = Column(Float)
-    sum_insured = Column(Float)
+    sum_insured = Column(String(255))
     net_premium = Column(Float)
     created_at = Column(DateTime, default=func.now())
     package = relationship("Package", back_populates="insurance")
