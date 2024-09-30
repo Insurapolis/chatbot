@@ -5,10 +5,9 @@ import pandas as pd
 import chromadb
 from chromadb import Collection
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
-from langchain_community.vectorstores import Chroma
+from langchain_chroma.vectorstores import Chroma
 
 from rag.schema import InsuranceData
-
 from rag.constants import (
     COL_INDEX,
     COL_TEXT,
@@ -46,10 +45,10 @@ class VectorZurichChromaDbClient:
         data_retriever = self.retriever.query(
             query_texts=user_question, n_results=top_k, where=filter_packages
         )
-        
+
         list_ids_retriever = data_retriever.get("ids")[0]
         list_documents_retriver = data_retriever.get("documents")[0]
-        
+
         data_string_document = "\n".join(list_documents_retriver)
 
         return data_string_document, list_ids_retriever

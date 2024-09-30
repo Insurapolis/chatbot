@@ -4,9 +4,9 @@ from chromadb.utils import embedding_functions
 from rag.constants import MODEL_NAME
 
 
-# sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-#     model_name=MODEL_NAME
-# )
+sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+    model_name=MODEL_NAME
+)
 
 
 def load_conf(*file_paths: list[str]) -> ChainMap:

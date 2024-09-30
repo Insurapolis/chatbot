@@ -5,10 +5,9 @@ import os
 from fastapi import FastAPI, Body, HTTPException, Query, status, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
+from datamodels.constants import TABLE_CONVERSATION_MESSAGES
+from datamodels.models import Base
 
-from rag.constants import TABLE_CONVERSATION_MESSAGES
-from rag.datamodels import Base
 from rag.auth import decode_token
 from rag.chatbot.memory import PostgresChatMessageHistory
 from rag.chatbot.llm import DummyConversation

@@ -1,6 +1,4 @@
 import pandera as pa
-
-
 class InsuranceData(pa.DataFrameModel):
     index: pa.typing.Series[int] = pa.Field(nullable=False)
     text: pa.typing.Series[str] = pa.Field(nullable=False)

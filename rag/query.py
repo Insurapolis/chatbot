@@ -1,20 +1,20 @@
 import uuid
 import pandas as pd
+
+
 from sqlalchemy import create_engine
-
-
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql import func
+
 from dotenv import load_dotenv
 import logging
-
-from rag.datamodels import (
+from datamodels.models import (
+    Base,
+    Package,
+    PackageLanguage,
     Conversation,
     ConversationMessage,
     UserInsurance,
-    Package,
-    PackageLanguage,
-    Base,
 )
 
 load_dotenv()

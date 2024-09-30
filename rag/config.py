@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field, model_serializer
 from rag.utils import load_conf
 from typing import List
 
-# from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 from dataclasses import dataclass, field
@@ -25,12 +24,9 @@ class ChatQuestion(BaseModel):
     conversation_uuid: str
 
 
-class BaseOpenAIConfig(BaseModel):
+class BaseConfig(BaseModel):
     model: str = Field(...)
-    temperature: float = Field(default=0, ge=0.0, le=1.0)
-    api_key: str = Field(...)
-    max_retries: int = Field(default=3)
-    timeout: int = Field(default=40)
+    temperature: float = Field(..., ge=0.0, le=1.0)
 
     @classmethod
     def load_from_yaml(
@@ -48,48 +44,49 @@ class BaseOpenAIConfig(BaseModel):
         """
         return cls(**dict(load_conf(file_path)))
 
+
+class OllamaConfig(BaseConfig):
+    num_predict: int
+
     @classmethod
-    def load_from_env(
-        cls: AzureChatOpenAIConfig, env_file: str = ".env"
-    ) -> AzureChatOpenAIConfig:
+    def load_from_env(cls: OllamaConfig, env_file: str = ".env") -> OllamaConfig:
         load_dotenv(env_file)
         return cls(
-            model_name=os.getenv("MODEL_NAME"),
+            model=os.getenv("MODEL_NAME"),
             temperature=float(os.getenv("TEMPERATURE", 0)),
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
         )
-
-
-class AzureChatOpenAIConfig(BaseOpenAIConfig):
-
-    azure_endpoint: str = Field(...)  # required
-    azure_deployment: str = Field(...)
-    api_version: str = Field(...)
 
     @model_serializer
-    def serialize_model(self):
+    def serializer(self):
         return {
-            "model_name": self.model_name,
+            "model": self.model,
             "temperature": self.temperature,
-            "openai_api_key": self.openai_api_key,
-            "azure_endpoint": self.azure_endpoint,
-            "api_version": self.api_version,
-            "azure_deployment": self.azure_deployment,
         }
 
+
+class OpenAIConfig(BaseConfig):
+    api_key: str = Field(...)
+    max_retries: int = Field(default=3)
+    timeout: int = Field(default=40)
+
     @classmethod
-    def load_from_env(
-        cls: AzureChatOpenAIConfig, env_file: str = ".env"
-    ) -> AzureChatOpenAIConfig:
+    def load_from_env(cls: OpenAIConfig, env_file: str = ".env") -> OpenAIConfig:
         load_dotenv(env_file)
         return cls(
-            model_name=os.getenv("MODEL_NAME"),
+            model=os.getenv("MODEL_NAME"),
             temperature=float(os.getenv("TEMPERATURE", 0)),
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            azure_endpoint=os.getenv("AZURE_ENDPOINT"),
-            api_version=os.getenv("API_VERSION"),
-            azure_deployment=os.getenv("AZURE_DEPLOYMENT"),
+            api_key=os.getenv("OPENAI_API_KEY"),
         )
+
+    @model_serializer
+    def serializer(self):
+        return {
+            "model": self.model,
+            "api_key": self.api_key,
+            "temperature": self.temperature,
+            "max_retries": self.max_retries,
+            "timeout": self.timeout,
+        }
 
 
 class VectorDatabaseFilter(BaseModel):
@@ -123,3 +120,35 @@ class Postgres:
             return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         else:
             return f"postgresql://{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+
+# class AzureChatOpenAIConfig(BaseOpenAIConfig):
+
+#     azure_endpoint: str = Field(...)  # required
+#     azure_deployment: str = Field(...)
+#     api_version: str = Field(...)
+
+#     @model_serializer
+#     def serialize_model(self):
+#         return {
+#             "model_name": self.model_name,
+#             "temperature": self.temperature,
+#             "openai_api_key": self.openai_api_key,
+#             "azure_endpoint": self.azure_endpoint,
+#             "api_version": self.api_version,
+#             "azure_deployment": self.azure_deployment,
+#         }
+
+#     @classmethod
+#     def load_from_env(
+#         cls: AzureChatOpenAIConfig, env_file: str = ".env"
+#     ) -> AzureChatOpenAIConfig:
+#         load_dotenv(env_file)
+#         return cls(
+#             model_name=os.getenv("MODEL_NAME"),
+#             temperature=float(os.getenv("TEMPERATURE", 0)),
+#             openai_api_key=os.getenv("OPENAI_API_KEY"),
+#             azure_endpoint=os.getenv("AZURE_ENDPOINT"),
+#             api_version=os.getenv("API_VERSION"),
+#             azure_deployment=os.getenv("AZURE_DEPLOYMENT"),
+#         )

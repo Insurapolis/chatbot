@@ -1,20 +1,21 @@
-# https://gist.github.com/jvelezmagic/03ddf4c452d011aae36b2a0f73d72f68
+from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Any, Union
 import random
-import tiktoken
 from pathlib import Path
 from dotenv import load_dotenv
 
-# from langchain_community.chat_message_histories import PostgresChatMessageHistory
-from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+from langchain.llms.base import LLM
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
 
-from rag.config import AzureChatOpenAIConfig, BaseOpenAIConfig
+from rag.config import OpenAIConfig, OllamaConfig
 from rag.chatbot.templates import (
     SYSTEM_MESSAGE,
     HUMAN_MESSAGE,
@@ -37,62 +38,13 @@ from rag.chatbot.dummy_answer import (
 )
 
 
-class LangChainChatbot:
-    """
-    A class to handle the creation and interaction with a language model chatbot
-    using different API providers like AzureChatOpenAI and ChatOpenAI.
-    """
+class BaseChat(ABC):
+    def __init__(
+        self, llm: LLM | None = None, prompt: ChatPromptTemplate | None = None
+    ):
 
-    def __init__(self, config_path: Union[Path, str]):
-        """
-        Initializes the chatbot with the given configuration file.
-
-        :param config_path: The path to the configuration file.
-        """
-        self.config_path = config_path
-        self.llm = None
-        self.prompt = None
-
-    def _load_config(self, api_type: str, file_extension: str):
-        """
-        Loads the configuration from the file based on API type and file extension.
-
-        :param api_type: 'azure' or 'openai'
-        :param file_extension: 'yml' or 'env'
-        :return: Configuration dictionary after parsing the specific API config.
-        """
-        if api_type == "azure":
-            config_class = AzureChatOpenAIConfig
-        elif api_type == "openai":
-            config_class = BaseOpenAIConfig
-        else:
-            raise ValueError(f"Unsupported API type: {api_type}")
-
-        if file_extension == "yml":
-            return config_class.load_from_yaml(file_path=self.config_path).model_dump()
-        elif file_extension == "env":
-            return config_class.load_from_env(env_file=self.config_path).model_dump()
-        else:
-            raise ValueError(f"Unsupported file extension: {file_extension}")
-
-    def _get_llm(self, api_type: str):
-        """
-        Initializes and returns the language model based on the selected API.
-
-        :param api_type: Type of API ('azure' or 'openai').
-        :return: Initialized language model.
-        """
-        file_extension = str(self.config_path).split(".")[-1]
-        config = self._load_config(api_type, file_extension)
-
-        if api_type == "azure":
-            self.llm = AzureChatOpenAI(**config)
-        elif api_type == "openai":
-            self.llm = ChatOpenAI(**config)
-        else:
-            raise ValueError(f"Unsupported API type: {api_type}")
-
-        return self.llm
+        self.llm = llm
+        self.prompt = prompt
 
     @property
     def prompt(self):
@@ -102,14 +54,9 @@ class LangChainChatbot:
 
     @prompt.setter
     def prompt(self, value):
-        # Optionally add validation or other logic here
         self._prompt = value
 
-    def _create_prompt(self):
-        """
-        Creates and returns the chat prompt template.
-        """
-        # Placeholder for actual message template classes
+    def _create_prompt(self) -> ChatPromptTemplate:
         return ChatPromptTemplate(
             messages=[
                 SystemMessagePromptTemplate.from_template(SYSTEM_MESSAGE),
@@ -117,20 +64,71 @@ class LangChainChatbot:
             ]
         )
 
+    def get_chain(self):
+        return self.prompt | self.llm
+
     @classmethod
-    def rag_from_config(cls, api_type: str, config_path: Union[Path, str]):
-        """
-        Class method to create an instance of LangChainChatbot, initialize it, and return the retrieval chain.
-        """
-        chatbot_instance = cls(config_path)
-        chatbot_instance._get_llm(api_type)
-        # Assuming | operator combines prompt and llm into a retrieval chain
-        return chatbot_instance.prompt | chatbot_instance.llm
+    def chain_from_config(cls, config: str | Path | dict):
+        if isinstance(config, (str, Path)):
+            config_dict = cls._load_config(config)
+        elif isinstance(config, dict):
+            config_dict = config
+        else:
+            raise ValueError("Config must be a path, string, or dictionary.")
+
+        llm = cls._get_llm(config_dict)
+        instance = cls(llm=llm)
+        return instance.get_chain()
+
+    @staticmethod
+    @abstractmethod
+    def _load_config(path: Union[str, Path]) -> dict:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def _get_llm(config: dict):
+        pass
+
+
+class OpenaiChatbot(BaseChat):
+    @staticmethod
+    def _load_config(path: Union[str, Path]) -> dict:
+        file_extension = str(path).split(".")[-1]
+
+        if file_extension == "yml":
+            return OpenAIConfig.load_from_yaml(file_path=path).model_dump()
+        elif file_extension == "env":
+            return OpenAIConfig.load_from_env(env_file=path).model_dump()
+        else:
+            raise ValueError(f"Unsupported file extension: {file_extension}")
+
+    @staticmethod
+    def _get_llm(config: dict):
+        return ChatOpenAI(**config)
+
+
+class OllamaChatbot(BaseChat):
+    @staticmethod
+    def _load_config(path: Union[str, Path]) -> dict:
+        file_extension = str(path).split(".")[-1]
+
+        if file_extension == "yml":
+            return OllamaConfig.load_from_yaml(file_path=path).model_dump()
+        elif file_extension == "env":
+            return OllamaConfig.load_from_env(env_file=path).model_dump()
+        else:
+            raise ValueError(f"Unsupported file extension: {file_extension}")
+
+    @staticmethod
+    def _get_llm(config: dict):
+        return ChatOllama(**config)
 
 
 class DummyConversation:
-    def __init__(self, model):
-        self.encoding = tiktoken.encoding_for_model(model)
+    def __init__(
+        self,
+    ):
         self.total_tokens = 0
         self.list_answer = [
             ANSWER_1,
@@ -149,7 +147,7 @@ class DummyConversation:
         ]
 
     def count_tokens(self, text):
-        num_tokens = len(self.encoding.encode(text))
+        num_tokens = 10
         return num_tokens
 
     def response(self):
