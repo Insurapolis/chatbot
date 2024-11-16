@@ -10,19 +10,19 @@ from fastapi.responses import JSONResponse
 from fastapi import Depends, FastAPI, Body, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from rag.utils import format_package_data, sentence_transformer_ef
-from rag.auth import decode_token
-from rag.query import QueryConversations
-from rag.config import (
+from src.rag.utils import format_package_data, sentence_transformer_ef
+from src.rag.auth import decode_token
+from src.rag.query import QueryConversations
+from src.rag.config import (
     ChatQuestion,
     Postgres,
     ConversationUpdateRequest,
     VectorDatabaseFilter,
 )
-from rag.chatbot.memory import PostgresChatMessageHistory
-from rag.chatbot.llm import OllamaChatbot, OpenaiChatbot
-from rag.chatbot.retriever import VectorZurichChromaDbClient
-from rag.constants import DB_PATH, COLLECTION_NAME
+
+from src.rag.chatbot.llm import OllamaChatbot, OpenaiChatbot
+from src.rag.chatbot.retriever import VectorZurichChromaDbClient
+from src.rag.constants import DB_PATH, COLLECTION_NAME
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -1,7 +1,7 @@
 import yaml
 from typing import ChainMap
 from chromadb.utils import embedding_functions
-from rag.constants import MODEL_NAME
+from src.rag.constants import MODEL_NAME
 
 
 sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(

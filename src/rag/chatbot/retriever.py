@@ -7,8 +7,8 @@ from chromadb import Collection
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from langchain_chroma.vectorstores import Chroma
 
-from rag.schema import InsuranceData
-from rag.constants import (
+from src.rag.schema import InsuranceData
+from src.rag.constants import (
     COL_INDEX,
     COL_TEXT,
     COL_TYPE,

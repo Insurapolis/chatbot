@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field, model_serializer
-from rag.utils import load_conf
+from src.rag.utils import load_conf
 from typing import List
 
 import os

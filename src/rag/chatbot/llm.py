@@ -15,11 +15,12 @@ from langchain.prompts import (
     SystemMessagePromptTemplate,
 )
 
-from rag.config import OpenAIConfig, OllamaConfig
-from rag.chatbot.templates import (
+from src.rag.config import OpenAIConfig, OllamaConfig
+from src.rag.chatbot.templates import (
     SYSTEM_MESSAGE,
     HUMAN_MESSAGE,
 )
+
 
 class BaseChat(ABC):
     def __init__(
