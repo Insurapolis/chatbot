@@ -124,3 +124,4 @@ class VectorDBCreator:
             ].to_dict("records"),
             documents=df[COL_TEXT].tolist(),
         )
+

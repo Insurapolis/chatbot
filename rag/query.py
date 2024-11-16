@@ -1,11 +1,20 @@
 import uuid
+import json
 import pandas as pd
-
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql import func
 
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    message_to_dict,
+    messages_from_dict,
+)
+
+from typing import Union
 from dotenv import load_dotenv
 import logging
 from datamodels.models import (
@@ -155,6 +164,75 @@ class QueryConversations:
             )
             .all()
         )
+
+    def add_message(
+        self, conversation_uuid: str, message: BaseMessage, tokens: int, cost: float
+    ):
+
+        message_query = ConversationMessage(
+            conversation_uuid=conversation_uuid,
+            message=json.dumps(message_to_dict(message)),
+            tokens=tokens,
+            cost=cost,
+        )
+
+        self.session.add(message_query)
+        self.session.commit()
+
+    def add_user_message(
+        self,
+        conversation_uuid: str,
+        message: Union[HumanMessage, str],
+        tokens: int,
+        cost: float,
+    ) -> None:
+        if isinstance(message, HumanMessage):
+            self.add_message(
+                message=message,
+                tokens=tokens,
+                cost=cost,
+                conversation_uuid=conversation_uuid,
+            )
+        else:
+            self.add_message(
+                message=HumanMessage(content=message),
+                tokens=tokens,
+                cost=cost,
+                conversation_uuid=conversation_uuid,
+            )
+
+    def add_ai_message(
+        self,
+        conversation_uuid: str,
+        message: Union[AIMessage, str],
+        tokens: int,
+        cost: float,
+    ) -> None:
+        if isinstance(message, AIMessage):
+            self.add_message(
+                message=message,
+                tokens=tokens,
+                cost=cost,
+                conversation_uuid=conversation_uuid,
+            )
+        else:
+            self.add_message(
+                AIMessage(content=message),
+                tokens=tokens,
+                cost=cost,
+                conversation_uuid=conversation_uuid,
+            )
+
+    def get_messages(self, conversation_uuid: str):
+        messages = (
+            self.session.query(ConversationMessage.message)
+            .filter(ConversationMessage.conversation_uuid == conversation_uuid)
+            .order_by(ConversationMessage.id)
+            .all()
+        )
+        messages = [message[0] for message in messages]
+        self.session.close()
+        return messages_from_dict(messages=messages)
 
     def insert_dummy_data(self):
         import json

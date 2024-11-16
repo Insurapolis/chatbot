@@ -21,23 +21,6 @@ from rag.chatbot.templates import (
     HUMAN_MESSAGE,
 )
 
-from rag.chatbot.dummy_answer import (
-    ANSWER_1,
-    ANSWER_2,
-    ANSWER_3,
-    ANSWER_4,
-    ANSWER_5,
-    ANSWER_6,
-    ANSWER_7,
-    ANSWER_8,
-    ANSWER_9,
-    ANSWER_10,
-    ANSWER_11,
-    ANSWER_12,
-    ANSWER_14,
-)
-
-
 class BaseChat(ABC):
     def __init__(
         self, llm: LLM | None = None, prompt: ChatPromptTemplate | None = None
@@ -123,50 +106,3 @@ class OllamaChatbot(BaseChat):
     @staticmethod
     def _get_llm(config: dict):
         return ChatOllama(**config)
-
-
-class DummyConversation:
-    def __init__(
-        self,
-    ):
-        self.total_tokens = 0
-        self.list_answer = [
-            ANSWER_1,
-            ANSWER_2,
-            ANSWER_3,
-            ANSWER_4,
-            ANSWER_5,
-            ANSWER_6,
-            ANSWER_7,
-            ANSWER_8,
-            ANSWER_9,
-            ANSWER_10,
-            ANSWER_11,
-            ANSWER_12,
-            ANSWER_14,
-        ]
-
-    def count_tokens(self, text):
-        num_tokens = 10
-        return num_tokens
-
-    def response(self):
-        if self.list_answer:
-            # Randomly choose an answer
-            selected_answer = random.choice(self.list_answer)
-            # Remove the chosen answer from the list
-            self.list_answer.remove(selected_answer)
-            return selected_answer
-        else:
-            return "No more answers available."
-
-    def __call__(self, text: str):
-        response = self.response()
-        prompt_tokens = self.count_tokens(text=text)
-        completion_tokens = self.count_tokens(text=response)
-
-        return {
-            "answer": response,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-        }
